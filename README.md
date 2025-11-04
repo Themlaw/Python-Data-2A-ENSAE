@@ -32,4 +32,9 @@ Examples:
 > python main.py --path ./input/path
 ```
 
-## To be done
+## Used Data
+
+https://www.kaggle.com/datasets/rajneesh231/salt-and-pepper-noise-images
+https://www.kaggle.com/datasets/rajat95gupta/smartphone-image-denoising-dataset
+https://noise.visinf.tu-darmstadt.de/
+https://arxiv.org/abs/1906.00270
