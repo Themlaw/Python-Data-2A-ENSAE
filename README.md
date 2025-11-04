@@ -38,4 +38,4 @@ https://www.kaggle.com/datasets/rajneesh231/salt-and-pepper-noise-images
 
 https://www.kaggle.com/datasets/rajat95gupta/smartphone-image-denoising-dataset
 
-https://arxiv.org/abs/1906.00270
+https://commons.wikimedia.org/wiki/Natural_Image_Noise_Dataset
