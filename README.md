@@ -57,4 +57,4 @@ Using the pipeline : is a bash command displayed in the readme ok ? + there are 
 
 Generate the data with different noise levels and make stats on the success rate according to the noise level. -> no
 
-Décomposition en valeurs propres, couleurs, saturation. C'est rare de dénoiser puis de classifier, mais pas impossible. Classifier VAE, visualiser les espaces latents. Chaque région de l'espace correspond à une classe. Voir ça avec donnes sans noise, puis introduction du bruit et si le classifier est résistant, voir pourquoi l'accuracy baisse (classes plus segmentées ou plus vastes) Quelle classe est la plus robuste au noise ?
+Décomposition en valeurs propres, couleurs, saturation. C'est rare de dénoiser puis de classifier, mais pas impossible. Classifier VAE, visualiser les espaces latents. Chaque région de l'espace correspond à une classe. Voir ça avec données sans noise, puis introduction du bruit et voir si le classifier est résistant, voir pourquoi l'accuracy baisse (classes plus segmentées ou plus vastes) Quelle classe est la plus robuste au noise ?
