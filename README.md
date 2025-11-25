@@ -9,11 +9,10 @@ First objective : Explore and build a classifier method limited to MNIST data
 Final objective : Build a method to solve any Captcha
 
 The final model should :
- 0. denoise captcha images
 
- 1. separate the characters
-
- 2. predict the value of the character
+- denoise captcha images
+- separate the characters
+- predict the value of the character
 
 ## Code
 
