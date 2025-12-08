@@ -1,4 +1,5 @@
-input/
+data/
 .venv
 MNIST/
 .DATA_env/
+__pycache__/
