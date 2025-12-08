@@ -176,12 +176,22 @@ def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5):
     # Choice of data loading according to the selected option
     if show_noisy:
         print(f"Chargement des données avec bruit ({noise_type}, facteur: {noise_factor})...")
-        (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data_with_noise(noise_type, noise_factor)
-        title_suffix = f"\n({noise_type})"
+        try:
+            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data_with_noise(noise_type, noise_factor)
+            title_suffix = f"\n({noise_type})"
+        except Exception as e:
+            mnist_dataloader.download_mnist()
+            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data_with_noise(noise_type, noise_factor)
+            title_suffix = f"\n({noise_type})"
     else:
         print("Chargement des données originales...")
-        (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data()
-        title_suffix = ""
+        try:
+            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data()
+            title_suffix = ""
+        except Exception as e:
+            mnist_dataloader.download_mnist()
+            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data()
+            title_suffix = ""
 
     images_2_show = []
     titles_2_show = []
@@ -215,4 +225,4 @@ def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5):
 
 
 if __name__ == '__main__':
-    show_images(show_noisy=True, noise_type="gaussian", noise_factor=0.3)
+    show_images(show_noisy=True, noise_type="gaussian", noise_factor=1)
