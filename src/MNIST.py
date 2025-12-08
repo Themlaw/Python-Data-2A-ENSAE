@@ -1,5 +1,3 @@
-
-
 import numpy as np
 import struct
 from array import array
@@ -80,81 +78,49 @@ class MnistDataloader(object):
         
         return images, labels
             
-    def load_data(self):
+    def load_data(self, apply_noise=False, noise_type="gaussian", noise_factor=0.5):
         """
-        Loads the training and test data
-
-        :returns: A tuple containing two tuples: (x_train, y_train) and (x_test, y_test).
-                  Each inner tuple contains the images and labels for the respective set.
-        :rtype: tuple
-        :raises Exception: If the data files are not found or cannot be read.
+        Loads training and test data, optionally with added noise.
+        
+        :param apply_noise: If True, applies noise to the data
+        :param noise_type: Type of noise ('gaussian' or 'salt_and_pepper')
+        :param noise_factor: Proportion/intensity of noise (0.0 to 1.0)
+        :returns: Tuple of ((x_train, y_train), (x_test, y_test))
         """
         x_train, y_train = self.read_images_labels(self.training_images_filepath, self.training_labels_filepath)
         x_test, y_test = self.read_images_labels(self.test_images_filepath, self.test_labels_filepath)
-        return (x_train, y_train),(x_test, y_test)    
-    
-    def load_data_with_noise(self, noise_type="gaussian", noise_factor=0.5):
-        """
-        Loads the training and test data with added noise.
+        
+        if not apply_noise:
+            return (x_train, y_train), (x_test, y_test)
+        
+        # Normalize to float32
+        x_train = np.array(x_train).astype('float32') / 255.0
+        x_test = np.array(x_test).astype('float32') / 255.0
+        
+        x_train_noisy = x_train.copy()
+        x_test_noisy = x_test.copy()
 
-        :param noise_type: Type of noise to apply. Supported values: 'gaussian' (Gaussian noise applied to a fraction of pixels)
-                           or 'salt_and_pepper' (random pixels set to 0.0 or 1.0).
-        :type noise_type: str
-        :param noise_factor: Proportion of pixels to affect by noise, between 0.0 and 1.0. For 'gaussian', defines the probability
-                            that a pixel receives noise. For 'salt_and_pepper', defines the proportion of pixels replaced.
-        :type noise_factor: float
-        :returns: A tuple containing two tuples: (x_train_noisy, y_train) and (x_test_noisy, y_test).
-                  Each inner tuple contains the noisy images (normalized to [0., 1.] as float32) and original labels for the respective set.
-        :rtype: tuple
-        :raises Exception: If the data files are not found or cannot be read.
-        """
         if noise_type == "gaussian":
-            (x_train, y_train), (x_test, y_test) = self.load_data()
+            # Apply Gaussian noise
+            noise_train = np.random.normal(loc=0.0, scale=1.0, size=x_train.shape)
+            noise_test = np.random.normal(loc=0.0, scale=1.0, size=x_test.shape)
 
-            x_train = np.array(x_train).astype('float32') / 255.0
-            x_test = np.array(x_test).astype('float32') / 255.0
-
-            x_train_noisy = x_train.copy()
-            x_test_noisy = x_test.copy()
-    
-            # create a boolean mask for train where pixels will be changed (approx. noise_factor proportion)
-            mask_train = np.random.random(x_train.shape) < noise_factor
-            x_train_noisy[mask_train] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask_train))
-    
-            # create a boolean mask for test where pixels will be changed (approx. noise_factor proportion)
-            mask_test = np.random.random(x_test.shape) < noise_factor
-            x_test_noisy[mask_test] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask_test))
+            x_train_noisy += noise_train
+            x_test_noisy += noise_test
 
             x_train_noisy = np.clip(x_train_noisy, 0., 1.)
             x_test_noisy = np.clip(x_test_noisy, 0., 1.)
-
-            return (x_train_noisy, y_train), (x_test_noisy, y_test)
         
         elif noise_type == "salt_and_pepper":
-            (x_train, y_train), (x_test, y_test) = self.load_data()
-
-            x_train = np.array(x_train).astype('float32') / 255.0
-            x_test = np.array(x_test).astype('float32') / 255.0
-
-            x_train_noisy = x_train.copy()
-            x_test_noisy = x_test.copy()
-
-            # create boolean masks where pixels will be changed (approx. noise_factor proportion)
+            # Apply Salt and Pepper noise
             mask_train = np.random.random(x_train.shape) < noise_factor
             mask_test = np.random.random(x_test.shape) < noise_factor
 
-            # assign salt (1.0) or pepper (0.0) to the selected pixels
-            num_train = np.sum(mask_train)
-            if num_train > 0:
-                vals = np.random.choice([0.0, 1.0], size=num_train)
-                x_train_noisy[mask_train] = vals
+            # Salt (1.0) and Pepper (0.0) noise
+            x_train_noisy[mask_train] = np.random.choice([0.0, 1.0], size=np.sum(mask_train))
+            x_test_noisy[mask_test] = np.random.choice([0.0, 1.0], size=np.sum(mask_test))
 
-            num_test = np.sum(mask_test)
-            if num_test > 0:
-                vals = np.random.choice([0.0, 1.0], size=num_test)
-                x_test_noisy[mask_test] = vals
-
-            return (x_train_noisy, y_train), (x_test_noisy, y_test)
+        return (x_train_noisy, y_train), (x_test_noisy, y_test)
 
 
     
@@ -177,11 +143,11 @@ def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5):
     if show_noisy:
         print(f"Chargement des données avec bruit ({noise_type}, facteur: {noise_factor})...")
         try:
-            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data_with_noise(noise_type, noise_factor)
+            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data(apply_noise=True, noise_type=noise_type, noise_factor=noise_factor)
             title_suffix = f"\n({noise_type})"
         except Exception as e:
             mnist_dataloader.download_mnist()
-            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data_with_noise(noise_type, noise_factor)
+            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data(apply_noise=True, noise_type=noise_type, noise_factor=noise_factor)
             title_suffix = f"\n({noise_type})"
     else:
         print("Chargement des données originales...")
@@ -225,4 +191,4 @@ def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5):
 
 
 if __name__ == '__main__':
-    show_images(show_noisy=True, noise_type="gaussian", noise_factor=1)
+    show_images(show_noisy=True, noise_type="salt_and_pepper", noise_factor=1)

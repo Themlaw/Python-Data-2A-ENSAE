@@ -141,8 +141,8 @@ def evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/M
 
     return fig, noise_levels, np.array(scores)
 
-evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/MNIST',
-                      noise_type='gaussian', epsilon=0.05, sample_size=None)
 
 if __name__ == '__main__':
-    evaluate_existing_model()
+    # evaluate_existing_model()
+    evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/MNIST',
+                      noise_type='salt_and_pepper', epsilon=0.05, sample_size=None)
