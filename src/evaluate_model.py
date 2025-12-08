@@ -59,7 +59,7 @@ def evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/M
 
     The function loads the model at `model_path`, then for noise levels from 0.0
     to 1.0 (inclusive) with step `epsilon` it loads the MNIST test set corrupted by
-    `noise_type` using `MnistDataloader.load_data_with_noise`, evaluates the model
+    `noise_type` using `MnistDataloader.load_data`, evaluates the model
     on the noisy test set and records the model score (the metric returned by
     `model.evaluate`). The function displays a matplotlib figure (noise vs score)
     and returns the figure object along with the arrays of noise levels and scores.
@@ -93,7 +93,7 @@ def evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/M
     for level in noise_levels:
         print(f"Evaluating noise level {level:.3f}...")
         try:
-            (_, _), (x_test_noisy, y_test) = mnist_loader.load_data_with_noise(noise_type=noise_type, noise_factor=float(level))
+            (_, _), (x_test_noisy, y_test) = mnist_loader.load_data(apply_noise=True, noise_type=noise_type, noise_factor=float(level))
         except Exception as e:
             print(f"Error loading noisy data for level {level}: {e}")
             scores.append(np.nan)
