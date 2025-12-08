@@ -162,48 +162,42 @@ class MnistDataloader(object):
 
 input_path = 'data\\MNIST'
 
-def show_images(show_noisy=False, noise_type='gaussian', noise_factor=0.5):
-    """Displays a collection of random MNIST images with optional noisy versions.
+def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5):
+    """
+    Displays a collection of images with titles. 
+    Can display original images or images with added noise.
 
-    :param show_noisy: If True, also loads and displays noisy versions of each selected image using load_data_with_noise.
-    :type show_noisy: bool
-    :param noise_type: Type of noise to apply when show_noisy is True. Supported values: 'gaussian' or 'salt_and_pepper'.
-    :type noise_type: str
-    :param noise_factor: Proportion of pixels affected by noise (0.0 to 1.0) when show_noisy is True.
-    :type noise_factor: float
-    :returns: None. Displays a matplotlib figure with 10 training and 5 test images (30 images total if show_noisy=False,
-              60 images if show_noisy=True) arranged in a grid.
-    :rtype: None
-    :raises Exception: if data loading or plotting fails
+    :param show_noisy: If True, loads data with noise using the specified parameters.
+    :param noise_type: Type of noise ('gaussian' or 'salt_and_pepper').
+    :param noise_factor: Intensity of the noise (0.0 to 1.0).
     """
     mnist_dataloader = MnistDataloader(data_dir=input_path)
-    (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data()
-
-    # If requested, also load noisy versions (normalized floats in [0,1])
+    
+    # Choice of data loading according to the selected option
     if show_noisy:
-        (x_train_noisy, _), (x_test_noisy, _) = mnist_dataloader.load_data_with_noise(noise_type=noise_type, noise_factor=noise_factor)
+        print(f"Chargement des données avec bruit ({noise_type}, facteur: {noise_factor})...")
+        (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data_with_noise(noise_type, noise_factor)
+        title_suffix = f"\n({noise_type})"
+    else:
+        print("Chargement des données originales...")
+        (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data()
+        title_suffix = ""
 
     images_2_show = []
     titles_2_show = []
-    # Show 10 training and 5 test images (originals). If show_noisy, also append their noisy counterparts.
+    
+    # Random selection from the training set
+    # Using len() to avoid out-of-bounds index errors
     for i in range(0, 10):
         r = random.randint(0, len(x_train) - 1)
         images_2_show.append(x_train[r])
-        titles_2_show.append('training image [' + str(r) + '] = ' + str(y_train[r]))
-        if show_noisy:
-            # noisy images are normalized in [0,1], scale to 0-255 for consistent display
-            noisy_img = (x_train_noisy[r] * 255.0).astype(x_train[r].__class__ if hasattr(x_train[r], '__class__') else float)
-            images_2_show.append(noisy_img)
-            titles_2_show.append('training image [' + str(r) + '] noisy (' + noise_type + ')')
+        titles_2_show.append('training image [' + str(r) + '] = ' + str(y_train[r]) + title_suffix)    
 
+    # Random selection from the test set
     for i in range(0, 5):
         r = random.randint(0, len(x_test) - 1)
         images_2_show.append(x_test[r])        
-        titles_2_show.append('test image [' + str(r) + '] = ' + str(y_test[r]))
-        if show_noisy:
-            noisy_img = (x_test_noisy[r] * 255.0).astype(x_test[r].__class__ if hasattr(x_test[r], '__class__') else float)
-            images_2_show.append(noisy_img)
-            titles_2_show.append('test image [' + str(r) + '] noisy (' + noise_type + ')')
+        titles_2_show.append('test image [' + str(r) + '] = ' + str(y_test[r]) + title_suffix)  
 
     cols = 5
     rows = int(len(images_2_show)/cols) + 1
@@ -215,10 +209,10 @@ def show_images(show_noisy=False, noise_type='gaussian', noise_factor=0.5):
         plt.subplot(rows, cols, index)        
         plt.imshow(image, cmap=plt.cm.gray)
         if (title_text != ''):
-            plt.title(title_text, fontsize = 15);        
+            plt.title(title_text, fontsize = 15)        
         index += 1
     plt.show()
 
 
 if __name__ == '__main__':
-    show_images()
+    show_images(show_noisy=True, noise_type="gaussian", noise_factor=0.3)

@@ -46,7 +46,7 @@ def train_and_evaluate(data_dir='data/MNIST', model_save_path='data/models/mnist
     :param model_save_path: The path to save the trained model.
     :raises Exception: if data loading or model training fails
     """
-    # Charger les données via MnistDataloader
+    # Load data via MnistDataloader
     mnist_loader = MnistDataloader(data_dir=data_dir)
     try:
         (x_train, y_train), (x_test, y_test) = mnist_loader.load_data()
@@ -54,7 +54,7 @@ def train_and_evaluate(data_dir='data/MNIST', model_save_path='data/models/mnist
         mnist_loader.download_mnist()
         (x_train, y_train), (x_test, y_test) = mnist_loader.load_data()
     
-    # Convertir en arrays numpy et ajouter dimension pour CNN (28, 28) -> (28, 28, 1)
+    # Convert to numpy arrays and add dimension for CNN (28, 28) -> (28, 28, 1)
     x_train = np.array([np.array(img).reshape(28, 28, 1) for img in x_train])
     x_test = np.array([np.array(img).reshape(28, 28, 1) for img in x_test])
     y_train = np.array(y_train)
@@ -72,7 +72,7 @@ def train_and_evaluate(data_dir='data/MNIST', model_save_path='data/models/mnist
     test_loss, test_acc = model.evaluate(x_test, y_test)
     print(f'\nTest accuracy: {test_acc}')
 
-    # Créer le dossier data/models s'il n'existe pas
+    # Create the data/models folder if it does not exist.
     os.makedirs(os.path.dirname(model_save_path), exist_ok=True)
     model.save(model_save_path)
     print(f"Model saved to : {model_save_path}")
