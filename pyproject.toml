@@ -10,4 +10,8 @@ dependencies = [
     "kagglehub>=0.2.0",
     "uv>=0.9.16",
     "matplotlib>=3.10.7",
+    "ipykernel>=7.1.0",
+    "pillow>=12.0.0",
+    "iprogress>=0.4",
+    "h5py>=3.15.1",
 ]
