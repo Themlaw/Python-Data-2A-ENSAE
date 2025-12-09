@@ -101,18 +101,19 @@ class MnistDataloader(object):
         x_test_noisy = x_test.copy()
 
         if noise_type == "gaussian":
-            # Apply Gaussian noise
-            noise_train = np.random.normal(loc=0.0, scale=1.0, size=x_train.shape)
-            noise_test = np.random.normal(loc=0.0, scale=1.0, size=x_test.shape)
-
-            x_train_noisy += noise_train
-            x_test_noisy += noise_test
+             # create a boolean mask for train where pixels will be changed (approx. noise_factor proportion)
+            mask_train = np.random.random(x_train.shape) < noise_factor
+            x_train_noisy[mask_train] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask_train))
+    
+            # create a boolean mask for test where pixels will be changed (approx. noise_factor proportion)
+            mask_test = np.random.random(x_test.shape) < noise_factor
+            x_test_noisy[mask_test] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask_test))
 
             x_train_noisy = np.clip(x_train_noisy, 0., 1.)
             x_test_noisy = np.clip(x_test_noisy, 0., 1.)
         
         elif noise_type == "salt_and_pepper":
-            # Apply Salt and Pepper noise
+            # create a mask for salt and pepper noise
             mask_train = np.random.random(x_train.shape) < noise_factor
             mask_test = np.random.random(x_test.shape) < noise_factor
 
@@ -128,7 +129,7 @@ class MnistDataloader(object):
 
 input_path = 'data\\MNIST'
 
-def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5):
+def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5, rseed=None):
     """
     Displays a collection of images with titles. 
     Can display original images or images with added noise.
@@ -161,6 +162,9 @@ def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5):
 
     images_2_show = []
     titles_2_show = []
+
+    if rseed is not None:
+        random.seed(rseed)
     
     # Random selection from the training set
     # Using len() to avoid out-of-bounds index errors
