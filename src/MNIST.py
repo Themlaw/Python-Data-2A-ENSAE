@@ -103,18 +103,20 @@ class MnistDataloader(object):
         x_test_noisy = x_test.copy()
 
         if noise_type == "gaussian":
-            # Apply Gaussian noise
-            noise_train = np.random.normal(loc=0.0, scale=1.0, size=x_train.shape)
-            noise_test = np.random.normal(loc=0.0, scale=1.0, size=x_test.shape)
+             # create a boolean mask for train where pixels will be changed (approx. noise_factor proportion)
+            mask_train = np.random.random(x_train.shape) < noise_factor
+            x_train_noisy[mask_train] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask_train))
 
-            x_train_noisy += noise_train
-            x_test_noisy += noise_test
+    
+            # create a boolean mask for test where pixels will be changed (approx. noise_factor proportion)
+            mask_test = np.random.random(x_test.shape) < noise_factor
+            x_test_noisy[mask_test] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask_test))
 
             x_train_noisy = np.clip(x_train_noisy, 0., 1.)
             x_test_noisy = np.clip(x_test_noisy, 0., 1.)
         
         elif noise_type == "salt_and_pepper":
-            # Apply Salt and Pepper noise
+            # create a mask for salt and pepper noise
             mask_train = np.random.random(x_train.shape) < noise_factor
             mask_test = np.random.random(x_test.shape) < noise_factor
 

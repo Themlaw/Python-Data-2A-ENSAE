@@ -2,7 +2,7 @@
 
 This is the GitHub repository for the Python project for Data Science in the second year at ENSAE.
 
-This project explores different methods of image denoising in some specific training datasets.
+This project explores different methods of image classification and denoising in some specific training datasets.
 
 First objective : Explore and build a classifier method limited to MNIST data
 
@@ -10,9 +10,7 @@ Final objective : Build a method to solve any Captcha
 
 The final model should :
 
-- denoise captcha images
-- separate the characters
-- predict the value of the character
+- predict the values of any Captcha characters
 
 ## Installation
 
@@ -46,35 +44,19 @@ The final model should :
 
 ## Code
 
-- [pipeline.py](code/pipeline.py) : the pipeline with all parameters
-- [main.py](code/main.py) : main file + parser
-
-### Requirements
-
-- python
-- numpy
-- pandas
-- sktime
-- scikit-learn
-- matplotlib
+- [MNIST.py](src/MNIST.py) : the class enabling us to load the MNIST data and make transforms on it, we also generate our database here
+- [simple_CNN.py](src/simple_CNN.py) : the first model we use to predict the value of MNIST
+- [evaluate_model.py](src/evaluate_model.py) : some functions used for making stats about the models
 
 ### Using the pipeline
 
-[main.py](code/main.py)
-
-```bash
-Arguments:
--p --path        : Path to the file containing the dataset
-
-Examples:
-> python main.py --path ./input/path
-```
+[main.ipynb](src/main.ipynb)
 
 ## Used Data
 
-We create a website, url :
+Using a MNIST database, we generate a complete captcha database with images of 4 characters. Each image can have a varying level of noise on it.
 
-This website stores our generated data with 3 variables for each line : image, solution, noise
+[MNIST.py](src/MNIST.py)
 
 ## Questions
 
