@@ -104,6 +104,7 @@ class MnistDataloader(object):
              # create a boolean mask for train where pixels will be changed (approx. noise_factor proportion)
             mask_train = np.random.random(x_train.shape) < noise_factor
             x_train_noisy[mask_train] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask_train))
+
     
             # create a boolean mask for test where pixels will be changed (approx. noise_factor proportion)
             mask_test = np.random.random(x_test.shape) < noise_factor
@@ -195,4 +196,4 @@ def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5, rseed
 
 
 if __name__ == '__main__':
-    show_images(show_noisy=True, noise_type="salt_and_pepper", noise_factor=1)
+    show_images(show_noisy=True, noise_type="gaussian", noise_factor=0.1, rseed=21)
