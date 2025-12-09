@@ -202,7 +202,7 @@ class MnistDataloader(object):
         else:
             return Image.new("RGB", (10, 10), (0, 0, 0)), [-1, -1, -1, -1]
     
-    def create_captcha_dataset(self, num_train=10000, num_test=2000, num_digits=4, output_dir='captcha_data'):
+    def create_captcha_dataset(self, num_train=10000, num_test=2000, num_digits=4, output_dir='captcha_data', seed=None):
         """
         Creates a dataset of CAPTCHA-like images composed of MNIST digits and saves to H5 format.
 
@@ -210,8 +210,13 @@ class MnistDataloader(object):
         :param num_test: Number of test CAPTCHA images to generate
         :param num_digits: Number of digits in each CAPTCHA (default: 4)
         :param output_dir: Directory to save the generated H5 files
+        :param seed: Random seed for reproducibility (optional)
         :returns: Paths to the generated H5 files
         """
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+        
         (X_train, y_train), (X_test, y_test) = self.load_data()
         X_train = np.array([np.array(img).reshape(28, 28) for img in X_train])
         X_test = np.array([np.array(img).reshape(28, 28) for img in X_test])
@@ -295,14 +300,18 @@ class MnistDataloader(object):
         
         return (X_train, y_train), (X_test, y_test)
     
-    def show_captcha(self, num_train=5, num_test=3, h5_filepath=None):
+    def show_captcha(self, num_train=5, num_test=3, h5_filepath=None, seed=None):
         """
         Displays CAPTCHA images from the dataset with their labels.
 
         :param num_train: Number of training CAPTCHA images to display
         :param num_test: Number of test CAPTCHA images to display
         :param h5_filepath: Optional path to the H5 file containing the CAPTCHA dataset
+        :param seed: Random seed for reproducibility (optional)
         """
+        if seed is not None:
+            random.seed(seed)
+        
         (X_train, y_train), (X_test, y_test) = self.load_captcha_dataset(h5_filepath)
         
         images_to_show = []
@@ -340,73 +349,88 @@ class MnistDataloader(object):
         plt.show()
         
         print(f"Affichage de {num_train} CAPTCHAs d'entraînement et {num_test} CAPTCHAs de test")
-
-
-input_path = 'data\\MNIST'
-
-def show_images(show_noisy=False, noise_type="gaussian", noise_factor=0.5):
-    """
-    Displays a collection of images with titles. 
-    Can display original images or images with added noise.
-
-    :param show_noisy: If True, loads data with noise using the specified parameters.
-    :param noise_type: Type of noise ('gaussian' or 'salt_and_pepper').
-    :param noise_factor: Intensity of the noise (0.0 to 1.0).
-    """
-    mnist_dataloader = MnistDataloader(data_dir=input_path)
     
-    # Choice of data loading according to the selected option
-    if show_noisy:
-        print(f"Chargement des données avec bruit ({noise_type}, facteur: {noise_factor})...")
-        try:
-            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data(apply_noise=True, noise_type=noise_type, noise_factor=noise_factor)
-            title_suffix = f"\n({noise_type})"
-        except Exception as e:
-            mnist_dataloader.download_mnist()
-            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data(apply_noise=True, noise_type=noise_type, noise_factor=noise_factor)
-            title_suffix = f"\n({noise_type})"
-    else:
-        print("Chargement des données originales...")
-        try:
-            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data()
-            title_suffix = ""
-        except Exception as e:
-            mnist_dataloader.download_mnist()
-            (x_train, y_train), (x_test, y_test) = mnist_dataloader.load_data()
-            title_suffix = ""
+    def show_images(self, num_train=10, num_test=5, show_noisy=False, noise_type="gaussian", noise_factor=0.5, seed=None):
+        """
+        Displays a collection of MNIST images with titles. 
+        Can display original images or images with added noise.
 
-    images_2_show = []
-    titles_2_show = []
-    
-    # Random selection from the training set
-    # Using len() to avoid out-of-bounds index errors
-    for i in range(0, 10):
-        r = random.randint(0, len(x_train) - 1)
-        images_2_show.append(x_train[r])
-        titles_2_show.append('training image [' + str(r) + '] = ' + str(y_train[r]) + title_suffix)    
+        :param num_train: Number of training images to display
+        :param num_test: Number of test images to display
+        :param seed: Random seed for reproducibility (optional)
+        :param show_noisy: If True, loads data with noise using the specified parameters.
+        :param noise_type: Type of noise ('gaussian' or 'salt_and_pepper').
+        :param noise_factor: Intensity of the noise (0.0 to 1.0).
+        """
+        if seed is not None:
+            random.seed(seed)
+            np.random.seed(seed)
+        
+        # Choice of data loading according to the selected option
+        if show_noisy:
+            print(f"Chargement des données avec bruit ({noise_type}, facteur: {noise_factor})...")
+            try:
+                (x_train, y_train), (x_test, y_test) = self.load_data(apply_noise=True, noise_type=noise_type, noise_factor=noise_factor)
+                title_suffix = f"\n({noise_type})"
+            except Exception as e:
+                self.download_mnist()
+                (x_train, y_train), (x_test, y_test) = self.load_data(apply_noise=True, noise_type=noise_type, noise_factor=noise_factor)
+                title_suffix = f"\n({noise_type})"
+        else:
+            print("Chargement des données originales...")
+            try:
+                (x_train, y_train), (x_test, y_test) = self.load_data()
+                title_suffix = ""
+            except Exception as e:
+                self.download_mnist()
+                (x_train, y_train), (x_test, y_test) = self.load_data()
+                title_suffix = ""
 
-    # Random selection from the test set
-    for i in range(0, 5):
-        r = random.randint(0, len(x_test) - 1)
-        images_2_show.append(x_test[r])        
-        titles_2_show.append('test image [' + str(r) + '] = ' + str(y_test[r]) + title_suffix)  
+        images_2_show = []
+        titles_2_show = []
+        
+        # Random selection from the training set
+        for i in range(num_train):
+            r = random.randint(0, len(x_train) - 1)
+            images_2_show.append(x_train[r])
+            titles_2_show.append('training image [' + str(r) + '] = ' + str(y_train[r]) + title_suffix)    
 
-    cols = 5
-    rows = int(len(images_2_show)/cols) + 1
-    plt.figure(figsize=(30,20))
-    index = 1    
-    for x in zip(images_2_show, titles_2_show):        
-        image = x[0]        
-        title_text = x[1]
-        plt.subplot(rows, cols, index)        
-        plt.imshow(image, cmap=plt.cm.gray)
-        if (title_text != ''):
-            plt.title(title_text, fontsize = 15)        
-        index += 1
-    plt.show()
+        # Random selection from the test set
+        for i in range(num_test):
+            r = random.randint(0, len(x_test) - 1)
+            images_2_show.append(x_test[r])        
+            titles_2_show.append('test image [' + str(r) + '] = ' + str(y_test[r]) + title_suffix)  
+
+        cols = 5
+        rows = int(len(images_2_show)/cols) + 1
+        plt.figure(figsize=(30,20))
+        index = 1    
+        for x in zip(images_2_show, titles_2_show):        
+            image = x[0]        
+            title_text = x[1]
+            plt.subplot(rows, cols, index)        
+            plt.imshow(image, cmap=plt.cm.gray)
+            if (title_text != ''):
+                plt.title(title_text, fontsize = 15)        
+            index += 1
+        plt.show()
+        
+        print(f"Affichage de {num_train} images d'entraînement et {num_test} images de test")
 
 
 if __name__ == '__main__':
-    # show_images(show_noisy=True, noise_type="salt_and_pepper", noise_factor=1)
-    creator = MnistDataloader()
-    creator.create_captcha_dataset(num_train=100, num_test=20)
+    loader = MnistDataloader()
+    
+    # Exemple 1: Afficher des images MNIST normales
+    # loader.show_images(num_train=9, num_test=0,seed=42)
+    
+    # Exemple 2: Afficher des images MNIST avec bruit
+    # loader.show_images(num_train=10, num_test=5, show_noisy=True, noise_type="salt_and_pepper", noise_factor=0.3, seed=42)
+    
+    # Exemple 3: Créer un dataset CAPTCHA
+    loader.create_captcha_dataset(num_train=100_000, num_test=20_000, seed=42)
+    
+    # Exemple 4: Afficher des CAPTCHAs
+    # loader.show_captcha(num_train=5, num_test=3, seed=42)
+    
+    pass
