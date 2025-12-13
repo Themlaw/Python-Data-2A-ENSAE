@@ -142,7 +142,65 @@ def evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/M
     return fig, noise_levels, np.array(scores)
 
 
+def predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='data', 
+                    image_index=None, show_image=True):
+    """Predicts the digits in a captcha image using a trained multi-head CNN model.
+
+    :param model_path: Path to the saved Keras model
+    :param data_dir: Directory where the MNIST data is stored
+    :param image_index: Index of the image to predict (None for random)
+    :param show_image: Whether to display the image with predictions
+    :returns: tuple of (predicted_digits, true_digits, image)
+    """
+    try:
+        model = tf.keras.models.load_model(model_path)
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None, None, None
+
+    mnist_loader = MnistDataloader(data_dir=data_dir)
+    try:
+        (_, _), (x_test, y_test) = mnist_loader.load_captcha_dataset()
+    except Exception as e:
+        print(f"Error loading captcha data: {e}")
+        return None, None, None
+
+    # Select image
+    if image_index is None:
+        image_index = np.random.randint(0, len(x_test))
+    
+    image = x_test[image_index]
+    true_digits = y_test[image_index]
+    
+    # Preprocess: convert to grayscale and normalize
+    image_gray = np.mean(image, axis=-1, keepdims=True)
+    image_normalized = image_gray.astype('float32') / 255.0
+    image_batch = np.expand_dims(image_normalized, axis=0)
+    
+    # Predict
+    predictions = model.predict(image_batch, verbose=0)
+    predicted_digits = [np.argmax(pred[0]) for pred in predictions]
+    
+    print(f"\nImage index: {image_index}")
+    print(f"True digits: {true_digits}")
+    print(f"Predicted digits: {predicted_digits}")
+    
+    # Display if requested
+    if show_image:
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.imshow(image_gray.squeeze(), cmap='gray')
+        ax.set_title(f'True: {true_digits} | Predicted: {predicted_digits}', fontsize=14)
+        ax.axis('off')
+        plt.tight_layout()
+        plt.show()
+    
+    return predicted_digits, true_digits, image
+
+
 if __name__ == '__main__':
     # evaluate_existing_model()
-    evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/MNIST',
-                      noise_type='salt_and_pepper', epsilon=0.05, sample_size=None)
+    # evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/MNIST',
+    #                   noise_type='salt_and_pepper', epsilon=0.05, sample_size=None)
+    
+    # Test captcha prediction
+    predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='data')
