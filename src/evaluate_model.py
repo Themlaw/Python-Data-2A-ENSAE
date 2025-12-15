@@ -3,6 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 from MNIST import MnistDataloader
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 def preprocess_data(x_test, y_test):
     """Preprocesses the test data by normalizing and one-hot encoding the labels.
@@ -198,9 +199,8 @@ def evaluate_captcha_vs_noise(model_path='data/models/multi_output_cnn.keras', d
     
     scores_per_digit = []  # Will store [level1_scores, level2_scores, ...], each with 4 digit accuracies
     avg_scores = []
-
-    for level in noise_levels:
-        print(f"Evaluating noise level {level:.3f}...")
+    print(f"Evaluating model from noise in {noise_levels}...")
+    for level in tqdm(noise_levels, desc="Evaluating noise levels", position=0, leave=True):
         try:
             # Apply noise to clean data or use clean data if level is 0
             if level > 0:
@@ -213,7 +213,7 @@ def evaluate_captcha_vs_noise(model_path='data/models/multi_output_cnn.keras', d
             x_test_norm = x_test_gray.astype('float32') / 255.0
 
             # Evaluate (returns [total_loss, digit1_loss, ..., digit4_loss, digit1_acc, ..., digit4_acc])
-            result = model.evaluate(x_test_norm, y_eval, verbose=1)
+            result = model.evaluate(x_test_norm, y_eval, verbose=0)
             
             # Extract accuracies for each digit
             if isinstance(result, (list, tuple)) and len(result) >= 9:
@@ -289,7 +289,7 @@ def predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='d
             truths = []
             preds = []
 
-            for lvl in levels:
+            for lvl in tqdm(levels, desc="Predicting noisy captchas", position=0, leave=True):
                 
                 (_, _), (x_t, y_t) = mnist_loader.load_captcha_dataset(
                     num_images_train=0, num_images_test=1, random_selection=True,

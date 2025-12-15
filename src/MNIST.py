@@ -616,7 +616,7 @@ if __name__ == '__main__':
     
     #Exemple 3: Create CAPTCHA dataset
     # loader.create_captcha_dataset(num_train=100_000, num_test=20_000, seed=42)
-    
+
     # Example 4: Display normal CAPTCHAs
     # loader.show_captcha(num_train=5, num_test=3, seed=42)
     
