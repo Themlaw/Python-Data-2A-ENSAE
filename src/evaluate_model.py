@@ -143,7 +143,9 @@ def evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/M
 
 
 def predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='data', 
-                    image_index=None, show_image=True):
+                    image_index=None, show_image=True,
+                    apply_noise=False, noise_type='salt_and_pepper', noise_factor=0.3,
+                    noise_factor_end=None, noise_step=0.1, rgb_noise=False):
     """Predicts the digits in a captcha image using a trained multi-head CNN model.
 
     :param model_path: Path to the saved Keras model
@@ -160,7 +162,59 @@ def predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='d
 
     mnist_loader = MnistDataloader(data_dir=data_dir)
     try:
-        (_, _), (x_test, y_test) = mnist_loader.load_captcha_dataset(num_images_train=0, num_images_test=1, random_selection=True)
+        # Multi-level mode: one image per noise level, predict and show all
+        if apply_noise and noise_factor_end is not None:
+            levels = []
+            current = noise_factor
+            while current <= noise_factor_end + 1e-9:
+                levels.append(round(current, 5))
+                current += noise_step
+
+            images = []
+            truths = []
+            preds = []
+
+            for lvl in levels:
+                
+                (_, _), (x_t, y_t) = mnist_loader.load_captcha_dataset(
+                    num_images_train=0, num_images_test=1, random_selection=True,
+                    apply_noise=True, noise_type=noise_type, noise_factor=lvl, rgb_noise=rgb_noise
+                )
+                
+                img = x_t[0]
+                true = y_t[0]
+                img_gray = np.mean(img, axis=-1, keepdims=True)
+                img_norm = img_gray.astype('float32') / 255.0
+                img_batch = np.expand_dims(img_norm, axis=0)
+                pred = model.predict(img_batch, verbose=0)
+                pred_digits = [int(np.argmax(p[0])) for p in pred]
+
+                images.append(img_gray)
+                truths.append(true)
+                preds.append(pred_digits)
+
+            # Display all predicted images at once
+            if show_image:
+                cols = len(levels)
+                fig, axes = plt.subplots(1, cols, figsize=(5*cols, 4))
+                if cols == 1:
+                    axes = [axes]
+                for i, ax in enumerate(axes):
+                    ax.imshow(images[i].squeeze(), cmap='gray')
+                    ax.set_title(f"lvl={levels[i]:.2f}\nTrue: {truths[i]}\nPred: {preds[i]}", fontsize=10)
+                    ax.axis('off')
+                plt.tight_layout()
+                plt.show()
+
+            return preds, truths, images
+
+        # Single image mode (clean or single noise factor)
+        (_, _), (x_test, y_test) = mnist_loader.load_captcha_dataset(
+            num_images_train=0, num_images_test=1, random_selection=True,
+            apply_noise=apply_noise, noise_type=noise_type, noise_factor=noise_factor, rgb_noise=rgb_noise
+        )
+        if apply_noise:
+            print(f"Using noisy captcha with {noise_type} noise, factor={noise_factor}")
     except Exception as e:
         print(f"Error loading captcha data: {e}")
         return None, None, None
@@ -179,7 +233,7 @@ def predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='d
     
     # Predict
     predictions = model.predict(image_batch, verbose=0)
-    predicted_digits = [np.argmax(pred[0]) for pred in predictions]
+    predicted_digits = [int(np.argmax(pred[0])) for pred in predictions]
     
     print(f"\nImage index: {image_index}")
     print(f"True digits: {true_digits}")
@@ -203,4 +257,4 @@ if __name__ == '__main__':
     #                   noise_type='salt_and_pepper', epsilon=0.05, sample_size=None)
     
     # Test captcha prediction
-    predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='data')
+    predict_captcha(model_path='data/models/multi_output_cnn_sandp.keras', data_dir='data', noise_type='salt_and_pepper', noise_factor=0.1, noise_factor_end=0.5, noise_step=0.05, apply_noise=True)

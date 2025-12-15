@@ -9,6 +9,7 @@ import kagglehub
 import shutil
 from PIL import Image, ImageOps
 import h5py
+from tqdm import tqdm 
 
 class MnistDataloader(object):
     """
@@ -294,7 +295,7 @@ class MnistDataloader(object):
     def create_captcha_dataset(self, num_train=10000, num_test=2000, num_digits=4, output_dir='captcha_data', seed=None):
         """
         Creates a dataset of CAPTCHA-like images composed of MNIST digits and saves to H5 format.
-
+        
         :param num_train: Number of training CAPTCHA images to generate
         :param num_test: Number of test CAPTCHA images to generate
         :param num_digits: Number of digits in each CAPTCHA (default: 4)
@@ -306,6 +307,7 @@ class MnistDataloader(object):
             random.seed(seed)
             np.random.seed(seed)
         
+        # Load MNIST data
         (X_train, y_train), (X_test, y_test) = self.load_data()
         X_train = np.array([np.array(img).reshape(28, 28) for img in X_train])
         X_test = np.array([np.array(img).reshape(28, 28) for img in X_test])
@@ -316,34 +318,25 @@ class MnistDataloader(object):
         os.makedirs(output_dir, exist_ok=True)
         
         captcha_file = os.path.join(output_dir, 'captcha_dataset.h5')
-        
-        print(f"\n GGenerating {num_train} training CAPTCHAs...")
+
         train_images = []
         train_labels = []
         
-        for i in range(num_train):
+        for _ in tqdm(range(num_train), desc=f"Génération Train ({num_train})"):
             image, labels = self.create_sequence(X_train, y_train, num_digits=num_digits)
-            # Convertir PIL Image en numpy array
             img_array = np.array(image)
             train_images.append(img_array)
             train_labels.append(labels)
-            
-            if (i + 1) % 1000 == 0:
-                print(f"  Progress: {i + 1}/{num_train}")
-        
-        print(f"\n GGenerating {num_test} test CAPTCHAs...")
+
         test_images = []
         test_labels = []
         
-        for i in range(num_test):
+        for _ in tqdm(range(num_test), desc=f"Génération Test  ({num_test}) "):
             image, labels = self.create_sequence(X_test, y_test, num_digits=num_digits)
-            # Convertir PIL Image en numpy array
             img_array = np.array(image)
             test_images.append(img_array)
             test_labels.append(labels)
             
-            if (i + 1) % 500 == 0:
-                print(f"  Progress: {i + 1}/{num_test}")
         
         # Convert to numpy arrays
         train_images = np.array(train_images)
@@ -352,7 +345,7 @@ class MnistDataloader(object):
         test_labels = np.array(test_labels)
         
         # Save in H5 format
-        print(f"Saving to {captcha_file}...")
+        print(f"\nSaving to {captcha_file}...")
         with h5py.File(captcha_file, 'w') as f:
             # Training data
             f.create_dataset('X_train', data=train_images, compression='gzip')
@@ -368,7 +361,7 @@ class MnistDataloader(object):
             f.attrs['num_test'] = num_test
             f.attrs['image_shape'] = train_images.shape[1:]
         
-        print(f" CAPTCHA dataset created successfully!")
+        print(f"CAPTCHA dataset created successfully!")
         
         return captcha_file
     
@@ -444,8 +437,10 @@ class MnistDataloader(object):
         if apply_noise:
             noise_mode = "RGB" if rgb_noise else "grayscale"
             print(f"Applying {noise_type} noise ({noise_mode} mode) to CAPTCHA images (factor: {noise_factor})...")
-            X_train = self.add_noise(X_train, noise_type, noise_factor, rgb_noise=rgb_noise)
-            X_test = self.add_noise(X_test, noise_type, noise_factor, rgb_noise=rgb_noise)
+            if len(X_train) > 0:
+                X_train = self.add_noise(X_train, noise_type, noise_factor, rgb_noise=rgb_noise)
+            if len(X_test) > 0:
+                X_test = self.add_noise(X_test, noise_type, noise_factor, rgb_noise=rgb_noise)
         
         return (X_train, y_train), (X_test, y_test)
     
@@ -629,6 +624,6 @@ if __name__ == '__main__':
     # loader.show_captcha(num_train=5, num_test=3, seed=42, apply_noise=True, noise_type='gaussian', noise_factor=0.3, rgb_noise=False)
     
     # Example 6: Display CAPTCHAs with RGB noise (independent noise per channel)
-    loader.show_captcha(num_train=5, num_test=3, seed=42, apply_noise=True, noise_type='salt_and_pepper', noise_factor=1, rgb_noise=False)
+    # loader.show_captcha(num_train=5, num_test=3, seed=42, apply_noise=True, noise_type='salt_and_pepper', noise_factor=1, rgb_noise=False)
     
     pass

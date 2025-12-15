@@ -75,16 +75,82 @@ def build_model():
     )
     return model
 
-def train_and_evaluate(data_dir='data', model_save_path='data/models/multi_output_cnn.keras'):
+def apply_balanced_noise(images, noise_type='gaussian', noise_factor=0.3, noise_factor_end=None, step=0.1, rgb_noise=False):
+    """Applies noise with balanced distribution across different noise levels.
+    
+    :param images: Array of images to add noise to
+    :param noise_type: Type of noise ('gaussian' or 'salt_and_pepper')
+    :param noise_factor: Starting noise factor
+    :param noise_factor_end: Ending noise factor (if None, all images use noise_factor)
+    :param step: Step size between noise levels
+    :param rgb_noise: If True, applies noise independently per RGB channel
+    :returns: Array of noisy images
+    """
+    from MNIST import MnistDataloader
+    temp_loader = MnistDataloader()
+    
+    if noise_factor_end is None:
+        # Apply same noise to all images
+        print(f"Applying {noise_type} noise (factor: {noise_factor})...")
+        return temp_loader.add_noise(images, noise_type, noise_factor, rgb_noise)
+    
+    # Calculate noise levels
+    noise_levels = []
+    current = noise_factor
+    while current <= noise_factor_end + 1e-9: 
+        noise_levels.append(round(current, 5))
+        current += step
+    
+    if len(noise_levels) == 0:
+        raise ValueError("No valid noise levels generated. Check your parameters.")
+    
+    print(f"Applying {noise_type} noise with {len(noise_levels)} levels: {noise_levels}")
+    
+    # Distribute images evenly across noise levels
+    num_images = len(images)
+    images_per_level = num_images // len(noise_levels)
+    remainder = num_images % len(noise_levels)
+    
+    noisy_images = []
+    current_idx = 0
+    
+    for i, level in enumerate(noise_levels):
+        # Calculate how many images for this level (distribute remainder)
+        num_for_level = images_per_level + (1 if i < remainder else 0)
+        
+        if num_for_level > 0:
+            # Extract images for this noise level
+            batch = images[current_idx:current_idx + num_for_level]
+            
+            # Apply noise
+            print(f"  Level {level:.2f}: processing {num_for_level} images ({current_idx+1}-{current_idx+num_for_level})")
+            batch_noisy = temp_loader.add_noise(images=batch, noise_type=noise_type, noise_factor=level, rgb_noise=rgb_noise)
+            noisy_images.append(batch_noisy)
+            
+            current_idx += num_for_level
+    
+    # Concatenate all batches
+    return np.concatenate(noisy_images, axis=0)
+
+def train_and_evaluate(data_dir='data', model_save_path='data/models/multi_output_cnn.keras',
+                      apply_noise=False, noise_type='gaussian', noise_factor=0.3, 
+                      noise_factor_end=None, noise_step=0.1, rgb_noise=False):
     """Trains and evaluates the CNN model.
 
     :param data_dir: The directory where the MNIST data is stored.
     :param model_save_path: The path to save the trained model.
+    :param apply_noise: If True, applies noise to the loaded CAPTCHA dataset
+    :param noise_type: Type of noise ('gaussian' or 'salt_and_pepper')
+    :param noise_factor: Starting noise factor (0.0 to 1.0)
+    :param noise_factor_end: Ending noise factor (if None, uses only noise_factor)
+    :param noise_step: Step size between noise levels
+    :param rgb_noise: If True, applies noise independently per RGB channel
     :raises Exception: if data loading or model training fails
     """
 
     mnist_loader = MnistDataloader(data_dir=data_dir)
     try:
+        # Load dataset without noise first
         (x_train, y_train), (x_test, y_test) = mnist_loader.load_captcha_dataset()
     except Exception as e:
         print(f"Captcha dataset not found with error: {e}, creating a new one...")
@@ -96,6 +162,17 @@ def train_and_evaluate(data_dir='data', model_save_path='data/models/multi_outpu
             mnist_loader.download_mnist()
             mnist_loader.create_captcha_dataset(num_train=100_000, num_test=10_000)
             (x_train, y_train), (x_test, y_test) = mnist_loader.load_captcha_dataset()
+    
+    # Apply noise if requested (before converting to grayscale)
+    if apply_noise:
+        noise_mode = "RGB" if rgb_noise else "grayscale"
+        if noise_factor_end is None:
+            print(f"\nApplying {noise_type} noise ({noise_mode} mode) with factor {noise_factor}")
+        else:
+            print(f"\nApplying {noise_type} noise ({noise_mode} mode) from {noise_factor} to {noise_factor_end} (step {noise_step})")
+        
+        x_train = apply_balanced_noise(x_train, noise_type, noise_factor, noise_factor_end, noise_step, rgb_noise)
+        x_test = apply_balanced_noise(x_test, noise_type, noise_factor, noise_factor_end, noise_step, rgb_noise)
     
     # Convert RGB to grayscale and reshape to (100, 110, 1)
     x_train = np.array([np.mean(img, axis=-1, keepdims=True) for img in x_train])
@@ -127,4 +204,29 @@ def train_and_evaluate(data_dir='data', model_save_path='data/models/multi_outpu
     print(f"Model saved to : {model_save_path}")
 
 if __name__ == '__main__':
-    train_and_evaluate()
+    # Example 1: Train without noise (original)
+    # train_and_evaluate()
+    
+    # Example 2: Train with uniform noise (same factor for all images)
+    # train_and_evaluate(apply_noise=True, noise_type='gaussian', noise_factor=0.3)
+    
+    # Example 3: Train with balanced noise range (1/3 at 0.3, 1/3 at 0.4, 1/3 at 0.5)
+    # train_and_evaluate(
+    #     apply_noise=True, 
+    #     noise_type='gaussian', 
+    #     noise_factor=0.3, 
+    #     noise_factor_end=0.5, 
+    #     noise_step=0.1,
+    #     rgb_noise=False
+    # )
+    
+    # Example 4: Train with salt_and_pepper noise with range
+    train_and_evaluate(
+        model_save_path='data/models/multi_output_cnn_sandp.keras',
+        apply_noise=True, 
+        noise_type='salt_and_pepper', 
+        noise_factor=0.2, 
+        noise_factor_end=0.4, 
+        noise_step=0.1,
+        rgb_noise=False
+    )
