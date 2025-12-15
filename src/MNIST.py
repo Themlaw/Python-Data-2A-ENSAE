@@ -51,6 +51,71 @@ class MnistDataloader(object):
             elif os.path.isdir(source):
                 shutil.copytree(source, destination, dirs_exist_ok=True)
 
+    def add_noise(self, images, noise_type='gaussian', noise_factor=0.5, rgb_noise=False):
+        """Adds noise to images (works for any image shape and format).
+        
+        :param images: numpy array or list of images (values 0-255 or 0-1)
+        :param noise_type: 'gaussian' or 'salt_and_pepper'
+        :param noise_factor: intensity of noise (0.0 to 1.0)
+        :param rgb_noise: If True and images are RGB, applies noise independently per channel.
+                          If False, applies the same noise to all channels (grayscale noise)
+        :returns: noisy images in same format as input
+        """
+        # Convert to numpy array if it's a list
+        images_array = np.array(images)
+        
+        # Detect if images are normalized (0-1) or raw (0-255)
+        is_normalized = images_array.max() <= 1.1
+        
+        # Work with normalized values (0-1)
+        if not is_normalized:
+            images_work = images_array.astype('float32') / 255.0
+        else:
+            images_work = images_array.astype('float32')
+        
+        noisy_images = images_work.copy()
+        
+        # Check if images are RGB (have 3 channels)
+        is_rgb = len(noisy_images.shape) == 4 and noisy_images.shape[-1] == 3
+        
+        if noise_type == "gaussian":
+            if is_rgb and not rgb_noise:
+                # Grayscale noise for RGB: apply same noise to all channels
+                # Create mask and noise for one channel
+                mask = np.random.random(noisy_images.shape[:-1] + (1,)) < noise_factor
+                noise = np.random.normal(loc=0.0, scale=1.0, size=mask.shape)
+                # Broadcast to all channels
+                mask = np.broadcast_to(mask, noisy_images.shape)
+                noise = np.broadcast_to(noise, noisy_images.shape)
+                noisy_images[mask] += noise[mask]
+            else:
+                # RGB noise or grayscale images: apply noise independently
+                mask = np.random.random(noisy_images.shape) < noise_factor
+                noisy_images[mask] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask))
+            
+            # Clip to valid range
+            noisy_images = np.clip(noisy_images, 0., 1.)
+            
+        elif noise_type == "salt_and_pepper":
+            if is_rgb and not rgb_noise:
+                # Grayscale salt & pepper for RGB: apply same value to all channels
+                mask = np.random.random(noisy_images.shape[:-1] + (1,)) < noise_factor
+                salt_pepper = np.random.choice([0.0, 1.0], size=mask.shape)
+                # Broadcast to all channels
+                mask = np.broadcast_to(mask, noisy_images.shape)
+                salt_pepper = np.broadcast_to(salt_pepper, noisy_images.shape)
+                noisy_images[mask] = salt_pepper[mask]
+            else:
+                # RGB noise or grayscale images: apply noise independently
+                mask = np.random.random(noisy_images.shape) < noise_factor
+                noisy_images[mask] = np.random.choice([0.0, 1.0], size=np.sum(mask))
+        
+        # Return in same format as input
+        if not is_normalized:
+            return (noisy_images * 255.0).astype(np.uint8)
+        else:
+            return noisy_images
+
     def read_images_labels(self, images_filepath, labels_filepath, num_images=None, random_selection=False):
         """Reads images and labels from specified files.
 
@@ -141,34 +206,10 @@ class MnistDataloader(object):
         if not apply_noise:
             return (x_train, y_train), (x_test, y_test)
         
-        # Normalize to float32
-        x_train = np.array(x_train).astype('float32') / 255.0
-        x_test = np.array(x_test).astype('float32') / 255.0
-        
-        x_train_noisy = x_train.copy()
-        x_test_noisy = x_test.copy()
-
-        if noise_type == "gaussian":
-             # create a boolean mask for train where pixels will be changed (approx. noise_factor proportion)
-            mask_train = np.random.random(x_train.shape) < noise_factor
-            x_train_noisy[mask_train] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask_train))
-
-    
-            # create a boolean mask for test where pixels will be changed (approx. noise_factor proportion)
-            mask_test = np.random.random(x_test.shape) < noise_factor
-            x_test_noisy[mask_test] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask_test))
-
-            x_train_noisy = np.clip(x_train_noisy, 0., 1.)
-            x_test_noisy = np.clip(x_test_noisy, 0., 1.)
-        
-        elif noise_type == "salt_and_pepper":
-            # create a mask for salt and pepper noise
-            mask_train = np.random.random(x_train.shape) < noise_factor
-            mask_test = np.random.random(x_test.shape) < noise_factor
-
-            # Salt (1.0) and Pepper (0.0) noise
-            x_train_noisy[mask_train] = np.random.choice([0.0, 1.0], size=np.sum(mask_train))
-            x_test_noisy[mask_test] = np.random.choice([0.0, 1.0], size=np.sum(mask_test))
+        # Apply noise using the generic add_noise method
+        print(f"Applying {noise_type} noise (factor: {noise_factor})...")
+        x_train_noisy = self.add_noise(x_train, noise_type, noise_factor, rgb_noise=False)
+        x_test_noisy = self.add_noise(x_test, noise_type, noise_factor, rgb_noise=False)
 
         return (x_train_noisy, y_train), (x_test_noisy, y_test)
 
@@ -331,7 +372,7 @@ class MnistDataloader(object):
         
         return captcha_file
     
-    def load_captcha_dataset(self, h5_filepath=None, num_images_train=None, num_images_test=None, random_selection=False):
+    def load_captcha_dataset(self, h5_filepath=None, num_images_train=None, num_images_test=None, random_selection=False, apply_noise=False, noise_type='gaussian', noise_factor=0.3, rgb_noise=False):
         """
         Loads the CAPTCHA dataset from an H5 file.
 
@@ -339,6 +380,10 @@ class MnistDataloader(object):
         :param num_images_train: Number of training images to load. If None, loads all training images
         :param num_images_test: Number of test images to load. If None, loads all test images
         :param random_selection: If True, selects images randomly. If False, takes first num_images
+        :param apply_noise: If True, applies noise to the loaded images
+        :param noise_type: Type of noise ('gaussian' or 'salt_and_pepper')
+        :param noise_factor: Proportion/intensity of noise (0.0 to 1.0)
+        :param rgb_noise: If True, applies noise independently per RGB channel. If False, applies grayscale noise
         :returns: Tuple of ((X_train, y_train), (X_test, y_test))
         """
         if h5_filepath is None:
@@ -394,9 +439,17 @@ class MnistDataloader(object):
                     y_test = f['y_test'][:num_test]
         
         print(f"CAPTCHA dataset loaded successfully!")
+        
+        # Apply noise if requested
+        if apply_noise:
+            noise_mode = "RGB" if rgb_noise else "grayscale"
+            print(f"Applying {noise_type} noise ({noise_mode} mode) to CAPTCHA images (factor: {noise_factor})...")
+            X_train = self.add_noise(X_train, noise_type, noise_factor, rgb_noise=rgb_noise)
+            X_test = self.add_noise(X_test, noise_type, noise_factor, rgb_noise=rgb_noise)
+        
         return (X_train, y_train), (X_test, y_test)
     
-    def show_captcha(self, num_train=5, num_test=3, h5_filepath=None, seed=None):
+    def show_captcha(self, num_train=5, num_test=3, h5_filepath=None, seed=None, apply_noise=False, noise_type='gaussian', noise_factor=0.3, rgb_noise=False):
         """
         Displays CAPTCHA images from the dataset with their labels.
 
@@ -404,6 +457,10 @@ class MnistDataloader(object):
         :param num_test: Number of test CAPTCHA images to display
         :param h5_filepath: Optional path to the H5 file containing the CAPTCHA dataset
         :param seed: Random seed for reproducibility (optional)
+        :param apply_noise: If True, applies noise to the loaded images
+        :param noise_type: Type of noise ('gaussian' or 'salt_and_pepper')
+        :param noise_factor: Proportion/intensity of noise (0.0 to 1.0)
+        :param rgb_noise: If True, applies noise independently per RGB channel. If False, applies grayscale noise
         """
         if seed is not None:
             random.seed(seed)
@@ -414,25 +471,36 @@ class MnistDataloader(object):
             h5_filepath=h5_filepath,
             num_images_train=num_train if num_train > 0 else 0,
             num_images_test=num_test if num_test > 0 else 0,
-            random_selection=True
+            random_selection=True,
+            apply_noise=apply_noise,
+            noise_type=noise_type,
+            noise_factor=noise_factor,
+            rgb_noise=rgb_noise
         )
         
         images_to_show = []
         titles_to_show = []
+        
+        # Build title suffix for noisy images
+        if apply_noise:
+            noise_mode = "RGB" if rgb_noise else "BW"
+            title_suffix = f" ({noise_type}/{noise_mode})"
+        else:
+            title_suffix = ""
         
         # Display all loaded training images
         if num_train > 0:
             for idx in range(len(X_train)):
                 images_to_show.append(X_train[idx])
                 label_str = ''.join(map(str, y_train[idx]))
-                titles_to_show.append(f'Train = {label_str}')
+                titles_to_show.append(f'Train = {label_str}{title_suffix}')
         
         # Display all loaded test images
         if num_test > 0:
             for idx in range(len(X_test)):
                 images_to_show.append(X_test[idx])
                 label_str = ''.join(map(str, y_test[idx]))
-                titles_to_show.append(f'Test = {label_str}')
+                titles_to_show.append(f'Test = {label_str}{title_suffix}')
         
         # Display
         total_images = len(images_to_show)
@@ -546,15 +614,21 @@ if __name__ == '__main__':
     loader = MnistDataloader()
     
     # Example 1: Display normal MNIST images
-    loader.show_images(num_train=9, num_test=0,seed=42)
+    # loader.show_images(num_train=9, num_test=0, seed=42)
     
     # Example 2: Display MNIST images with noise
     # loader.show_images(num_train=10, num_test=5, show_noisy=True, noise_type="salt_and_pepper", noise_factor=0.3, seed=42)
     
-    # Exemple 3: Créer un dataset CAPTCHA
+    #Exemple 3: Create CAPTCHA dataset
     # loader.create_captcha_dataset(num_train=100_000, num_test=20_000, seed=42)
     
-    # Exemple 4: Afficher des CAPTCHAs
+    # Example 4: Display normal CAPTCHAs
     # loader.show_captcha(num_train=5, num_test=3, seed=42)
+    
+    # Example 5: Display CAPTCHAs with grayscale noise (same noise on all RGB channels)
+    # loader.show_captcha(num_train=5, num_test=3, seed=42, apply_noise=True, noise_type='gaussian', noise_factor=0.3, rgb_noise=False)
+    
+    # Example 6: Display CAPTCHAs with RGB noise (independent noise per channel)
+    loader.show_captcha(num_train=5, num_test=3, seed=42, apply_noise=True, noise_type='salt_and_pepper', noise_factor=1, rgb_noise=False)
     
     pass

@@ -160,7 +160,7 @@ def predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='d
 
     mnist_loader = MnistDataloader(data_dir=data_dir)
     try:
-        (_, _), (x_test, y_test) = mnist_loader.load_captcha_dataset()
+        (_, _), (x_test, y_test) = mnist_loader.load_captcha_dataset(num_images_train=0, num_images_test=1, random_selection=True)
     except Exception as e:
         print(f"Error loading captcha data: {e}")
         return None, None, None
