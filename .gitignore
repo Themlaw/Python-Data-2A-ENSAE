@@ -4,3 +4,6 @@ MNIST/
 .DATA_env/
 __pycache__/
 test*
+.env
+src/perso*
+src/.env
