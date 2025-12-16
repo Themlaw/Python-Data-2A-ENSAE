@@ -1126,6 +1126,7 @@ dependencies = [
     { name = "numpy" },
     { name = "pillow" },
     { name = "tensorflow" },
+    { name = "tqdm" },
     { name = "uv" },
 ]
 
@@ -1139,6 +1140,7 @@ requires-dist = [
     { name = "numpy", specifier = ">=1.26.0" },
     { name = "pillow", specifier = ">=12.0.0" },
     { name = "tensorflow", specifier = ">=2.15.0" },
+    { name = "tqdm", specifier = ">=4.67.1" },
     { name = "uv", specifier = ">=0.9.16" },
 ]
 

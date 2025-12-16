@@ -3,6 +3,7 @@ import tensorflow as tf
 from tensorflow.keras.utils import to_categorical
 from MNIST import MnistDataloader
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 def preprocess_data(x_test, y_test):
     """Preprocesses the test data by normalizing and one-hot encoding the labels.
@@ -142,7 +143,257 @@ def evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/M
     return fig, noise_levels, np.array(scores)
 
 
+def evaluate_captcha_vs_noise(model_path='data/models/multi_output_cnn.keras', data_dir='data',
+                               noise_type='gaussian', noise_factor_start=0.0, noise_factor_end=1.0, 
+                               noise_step=0.05, rgb_noise=False, sample_size=None):
+    """Evaluate a multi-head CAPTCHA model across a range of noise levels and plot the result.
+
+    :param model_path: path to the saved Keras multi-head model
+    :param data_dir: directory where CAPTCHA data is stored
+    :param noise_type: type of noise to apply ('gaussian' or 'salt_and_pepper')
+    :param noise_factor_start: starting noise level (default: 0.0)
+    :param noise_factor_end: ending noise level (default: 1.0)
+    :param noise_step: step size between noise levels
+    :param rgb_noise: If True, applies noise independently per RGB channel
+    :param sample_size: optional integer to limit number of test samples (speeds up evaluation)
+    :returns: (fig, noise_levels, scores_per_digit, avg_scores) where scores_per_digit is shape (num_levels, 4)
+    """
+    print(f"Loading model from {model_path}...")
+    try:
+        model = tf.keras.models.load_model(model_path)
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None, None, None, None
+
+    mnist_loader = MnistDataloader(data_dir=data_dir)
+
+    # Load test data ONCE (clean, no noise)
+    print("Loading CAPTCHA test dataset...")
+    try:
+        (_, _), (x_test_clean, y_test) = mnist_loader.load_captcha_dataset(num_images_train=0, apply_noise=False)
+    except Exception as e:
+        print(f"Error loading captcha data: {e}")
+        return None, None, None, None
+
+    # Optionally subsample indices
+    if sample_size is not None and sample_size > 0 and sample_size < len(x_test_clean):
+        idx = np.random.choice(len(x_test_clean), sample_size, replace=False)
+        x_test_clean = x_test_clean[idx]
+        y_test = y_test[idx]
+        print(f"Using {sample_size} samples for evaluation")
+
+    # Prepare labels once (same for all noise levels)
+    y_test = np.array(y_test)
+    y_test1 = to_categorical([y_test[i][0] for i in range(len(y_test))], 10)
+    y_test2 = to_categorical([y_test[i][1] for i in range(len(y_test))], 10)
+    y_test3 = to_categorical([y_test[i][2] for i in range(len(y_test))], 10)
+    y_test4 = to_categorical([y_test[i][3] for i in range(len(y_test))], 10)
+    y_eval = [y_test1, y_test2, y_test3, y_test4]
+
+    # Generate noise levels
+    noise_levels = []
+    current = noise_factor_start
+    while current <= noise_factor_end + 1e-9:
+        noise_levels.append(round(current, 10))
+        current += noise_step
+    
+    scores_per_digit = []  # Will store [level1_scores, level2_scores, ...], each with 4 digit accuracies
+    avg_scores = []
+    print(f"Evaluating model from noise in {noise_levels}...")
+    for level in tqdm(noise_levels, desc="Evaluating noise levels", position=0, leave=True):
+        try:
+            # Apply noise to clean data or use clean data if level is 0
+            if level > 0:
+                x_noisy = mnist_loader.add_noise(images=x_test_clean, noise_type=noise_type, noise_factor=level, rgb_noise=rgb_noise)
+            else:
+                x_noisy = x_test_clean
+
+            # Convert RGB to grayscale and normalize
+            x_test_gray = np.array([np.mean(img, axis=-1, keepdims=True) for img in x_noisy])
+            x_test_norm = x_test_gray.astype('float32') / 255.0
+
+            # Evaluate (returns [total_loss, digit1_loss, ..., digit4_loss, digit1_acc, ..., digit4_acc])
+            result = model.evaluate(x_test_norm, y_eval, verbose=0)
+            
+            # Extract accuracies for each digit
+            if isinstance(result, (list, tuple)) and len(result) >= 9:
+                digit_accuracies = result[5:9]  # Indices 5,6,7,8 are the 4 digit accuracies
+            else:
+                digit_accuracies = [np.nan, np.nan, np.nan, np.nan]
+            
+            scores_per_digit.append(digit_accuracies)
+            avg_scores.append(np.mean(digit_accuracies))
+
+        except Exception as e:
+            print(f"Error evaluating level {level}: {e}")
+            scores_per_digit.append([np.nan, np.nan, np.nan, np.nan])
+            avg_scores.append(np.nan)
+
+    scores_per_digit = np.array(scores_per_digit)
+    avg_scores = np.array(avg_scores)
+
+    # Plot
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(16, 6))
+    
+    # Plot 1: Individual digit accuracies
+    for i in range(4):
+        ax1.plot(noise_levels, scores_per_digit[:, i], marker='o', label=f'Digit {i+1}')
+    ax1.set_xlabel('Noise level')
+    ax1.set_ylabel('Accuracy')
+    ax1.set_title(f'Per-digit accuracy vs noise (type={noise_type})')
+    ax1.legend()
+    ax1.grid(True)
+    
+    # Plot 2: Average accuracy
+    ax2.plot(noise_levels, avg_scores, marker='o', color='red', linewidth=2)
+    ax2.set_xlabel('Noise level')
+    ax2.set_ylabel('Average accuracy')
+    ax2.set_title(f'Average accuracy vs noise (type={noise_type})')
+    ax2.grid(True)
+    
+    plt.tight_layout()
+    plt.show()
+
+    return fig, noise_levels, scores_per_digit, avg_scores
+
+
+def predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='data', 
+                    image_index=None, show_image=True,
+                    apply_noise=False, noise_type='salt_and_pepper', noise_factor=0.3,
+                    noise_factor_end=None, noise_step=0.1, rgb_noise=False):
+    """Predicts the digits in a captcha image using a trained multi-head CNN model.
+
+    :param model_path: Path to the saved Keras model
+    :param data_dir: Directory where the MNIST data is stored
+    :param image_index: Index of the image to predict (None for random)
+    :param show_image: Whether to display the image with predictions
+    :returns: tuple of (predicted_digits, true_digits, image)
+    """
+    try:
+        model = tf.keras.models.load_model(model_path)
+    except Exception as e:
+        print(f"Error loading model: {e}")
+        return None, None, None
+
+    mnist_loader = MnistDataloader(data_dir=data_dir)
+    try:
+        # Multi-level mode: one image per noise level, predict and show all
+        if apply_noise and noise_factor_end is not None:
+            levels = []
+            current = noise_factor
+            while current <= noise_factor_end + 1e-9:
+                levels.append(round(current, 5))
+                current += noise_step
+
+            images = []
+            truths = []
+            preds = []
+
+            for lvl in tqdm(levels, desc="Predicting noisy captchas", position=0, leave=True):
+                
+                (_, _), (x_t, y_t) = mnist_loader.load_captcha_dataset(
+                    num_images_train=0, num_images_test=1, random_selection=True,
+                    apply_noise=True, noise_type=noise_type, noise_factor=lvl, rgb_noise=rgb_noise
+                )
+                
+                img = x_t[0]
+                true = y_t[0]
+                img_gray = np.mean(img, axis=-1, keepdims=True)
+                img_norm = img_gray.astype('float32') / 255.0
+                img_batch = np.expand_dims(img_norm, axis=0)
+                pred = model.predict(img_batch, verbose=0)
+                pred_digits = [int(np.argmax(p[0])) for p in pred]
+
+                images.append(img_gray)
+                truths.append(true)
+                preds.append(pred_digits)
+
+            # Display all predicted images at once
+            if show_image:
+                cols = len(levels)
+                fig, axes = plt.subplots(len(levels)//5, cols, figsize=(cols*2, (len(levels)//5)*2))
+                if cols == 1:
+                    axes = [axes]
+                for i, ax in enumerate(axes):
+                    ax.imshow(images[i].squeeze(), cmap='gray')
+                    ax.set_title(f"lvl={levels[i]:.2f}\nTrue: {truths[i]}\nPred: {preds[i]}", fontsize=10)
+                    ax.axis('off')
+                plt.tight_layout()
+                plt.show()
+
+            return preds, truths, images
+
+        # Single image mode (clean or single noise factor)
+        (_, _), (x_test, y_test) = mnist_loader.load_captcha_dataset(
+            num_images_train=0, num_images_test=1, random_selection=True,
+            apply_noise=apply_noise, noise_type=noise_type, noise_factor=noise_factor, rgb_noise=rgb_noise
+        )
+        if apply_noise:
+            print(f"Using noisy captcha with {noise_type} noise, factor={noise_factor}")
+    except Exception as e:
+        print(f"Error loading captcha data: {e}")
+        return None, None, None
+
+    # Select image
+    if image_index is None:
+        image_index = np.random.randint(0, len(x_test))
+    
+    image = x_test[image_index]
+    true_digits = y_test[image_index]
+    
+    # Preprocess: convert to grayscale and normalize
+    image_gray = np.mean(image, axis=-1, keepdims=True)
+    image_normalized = image_gray.astype('float32') / 255.0
+    image_batch = np.expand_dims(image_normalized, axis=0)
+    
+    # Predict
+    predictions = model.predict(image_batch, verbose=0)
+    predicted_digits = [int(np.argmax(pred[0])) for pred in predictions]
+    
+    print(f"\nImage index: {image_index}")
+    print(f"True digits: {true_digits}")
+    print(f"Predicted digits: {predicted_digits}")
+    
+    # Display if requested
+    if show_image:
+        fig, ax = plt.subplots(figsize=(10, 4))
+        ax.imshow(image_gray.squeeze(), cmap='gray')
+        ax.set_title(f'True: {true_digits} | Predicted: {predicted_digits}', fontsize=14)
+        ax.axis('off')
+        plt.tight_layout()
+        plt.show()
+    
+    return predicted_digits, true_digits, image
+
+
 if __name__ == '__main__':
+    # Example 1: Evaluate MNIST model vs noise
     # evaluate_existing_model()
-    evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/MNIST',
-                      noise_type='salt_and_pepper', epsilon=0.05, sample_size=None)
+    # evaluate_vs_noise(model_path='data/models/mnist_cnn.keras', data_dir='data/MNIST',
+    #                   noise_type='salt_and_pepper', epsilon=0.05, sample_size=None)
+    
+    # Example 2: Evaluate CAPTCHA model vs noise
+    evaluate_captcha_vs_noise(
+        model_path='data/models/multi_output_cnn.keras', 
+        data_dir='data',
+        noise_type='salt_and_pepper',
+        noise_factor_start=0.0,
+        noise_factor_end=0.5,
+        noise_step=0.05,
+        rgb_noise=False,
+        sample_size=None  # Use all test data for accurate results
+    )
+    
+    # Example 3: Single captcha prediction without noise
+    # predict_captcha(model_path='data/models/multi_output_cnn.keras', data_dir='data')
+    
+    # Example 4: Multi-level noisy captcha prediction
+    # predict_captcha(
+    #     model_path='data/models/multi_output_cnn_sandp.keras', 
+    #     data_dir='data', 
+    #     noise_type='salt_and_pepper', 
+    #     noise_factor=0.1, 
+    #     noise_factor_end=0.5, 
+    #     noise_step=0.05, 
+    #     apply_noise=True
+    # )
