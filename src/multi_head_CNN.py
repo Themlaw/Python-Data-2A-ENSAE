@@ -75,7 +75,7 @@ def build_model():
     )
     return model
 
-def apply_balanced_noise(images, noise_type='gaussian', noise_factor=0.3, noise_factor_end=None, step=0.1, rgb_noise=False):
+def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3, noise_factor_end=None, step=0.1, rgb_noise=False):
     """Applies noise with balanced distribution across different noise levels.
     
     :param images: Array of images to add noise to

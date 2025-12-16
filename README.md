@@ -71,6 +71,8 @@ Generate the data with different noise levels and make stats on the success rate
 
 Décomposition en valeurs propres, couleurs, saturation. C'est rare de dénoiser puis de classifier, mais pas impossible. Classifier VAE, visualiser les espaces latents. Chaque région de l'espace correspond à une classe. Voir ça avec données sans noise, puis introduction du bruit et voir si le classifier est résistant, voir pourquoi l'accuracy baisse (classes plus segmentées ou plus vastes) Quelle classe est la plus robuste au noise ?
 
+-----------------------------------------------------------
+
 Comment la modification d'une image par ajout de différents types de bruits influence la résolution des captcha par des modèles de reconnaissance. Pour cela, nous utilisons un modèle de CNN qui sert de base à nos expériences. 
 
 On va régresser sur les niveaux de bruit, sur les types de bruit, sur les couleurs / noir et blanc...
@@ -78,7 +80,12 @@ On va régresser sur les niveaux de bruit, sur les types de bruit, sur les coule
 Faire des stats sur les chiffres que le modèle confond le plus, sur les combinaisons que le modèle prédit le mieux, le moins bien. 
 
 Régresser les différentes variables. Table de régression, coefficients, p value, stat de test. Débiaiser les clusters dans les régressions (si il y a des groupes pour certaines features). Méthode du Leave one out, voir la corrélation entre les régresseurs, le R² ajusté. Séparer les effets, plot en ordonnée la variable à expliquer et en abscisse la variable explicative et mettre la droite. Corrélation à l'ordre 2 ? à l'ordre 3 ?
+Visualisation pour quels chiffres ils se trompent 
+Est-ce qu’il a plus de mal à prédire si tout le temps le même chiffre ou si pair différents 
+Regarder les masques 
+Quel est le captcha optimal 
 
-silency maps : regarder ce que le modèle a appris. regarder ce que le modèle cherche dans l'image : qu'est-ce qui fait que le modèle reconnaît l'image. 
 
-Réfléchir au captcha optimal. 
+<!-- silency maps : regarder ce que le modèle a appris. regarder ce que le modèle cherche dans l'image : qu'est-ce qui fait que le modèle reconnaît l'image. 
+
+Réfléchir au captcha optimal.  -->
