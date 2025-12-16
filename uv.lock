@@ -1179,7 +1179,6 @@ requires-dist = [
     { name = "kagglehub", specifier = ">=0.2.0" },
     { name = "matplotlib", specifier = ">=3.10.7" },
     { name = "numpy", specifier = ">=1.26.0" },
-    { name = "pandas", specifier = ">=2.0.0" },
     { name = "pillow", specifier = ">=12.0.0" },
     { name = "tensorflow", specifier = ">=2.15.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
