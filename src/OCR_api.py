@@ -43,31 +43,31 @@ def ocr_space_one_image(image_data, api_key, language='eng', filetype='PNG', OCR
     :return: Result in JSON format.
     """       
     
-    # Conversion en uint8 si nécessaire
+    # Conversion to uint8 if necessary
     if image_data.max() <= 1.0:
         image_data = (image_data * 255).astype(np.uint8)
     else:
         image_data = image_data.astype(np.uint8)  
         
-    # Création et traitement de l'image
+    # Image creation and processing
     img = Image.fromarray(image_data)
         
-    # Conversion en niveaux de gris si nécessaire
+    # Convert to grayscale if necessary
     if img.mode != 'L':
         img = img.convert('L')
         
-    # Inversion des couleurs de l'image
+    # Image color inversion
     img = ImageOps.invert(img)
        
-    # Amélioration de la netteté
+    # Sharpness enhancement
     img = img.filter(ImageFilter.SHARPEN)
         
-    # Sauvegarde temporaire
+    # Temporary file saving
     temp_filename = "test1.png"
     img.save(temp_filename)
         
-    # Prédiction via l'API
-    print(f"Prédiction de l'image...")
+    # Prediction via API
+    print(f"Predicting image...")
     test_file = ocr_space_file(
         filename=temp_filename, 
         api_key=api_key, 
@@ -76,27 +76,27 @@ def ocr_space_one_image(image_data, api_key, language='eng', filetype='PNG', OCR
         OCREngine=OCREngine
     )
         
-    # Conversion du résultat en dictionnaire
+    # Parse result into dictionary
     data = json.loads(test_file)
     print(data)
-    # Accès au texte parsé
+    # Access parsed text
     parsed_text = data["ParsedResults"][0]["ParsedText"]
         
     return parsed_text
  
 def test_ocr_on_captcha(mnist_loader, api_key, h5_filepath, num_images=3, noise_factor=0.1, display_images=True):
     """
-    Teste l'API OCR sur des images CAPTCHA générées à partir du dataset MNIST.
+    Tests the OCR API on CAPTCHA images generated from the MNIST dataset.
     
-    :param mnist_loader: Instance de MnistDataloader
-    :param api_key: Clé API pour OCR.space
-    :param h5_filepath: Chemin vers le fichier HDF5 contenant les CAPTCHA
-    :param num_images: Nombre d'images à tester
-    :param noise_factor: Facteur de bruit à appliquer aux images
-    :param display_images: Si True, affiche les images avec matplotlib
-    :return: Liste des résultats (index, texte prédit, texte réel)
+    :param mnist_loader: Instance of MnistDataloader
+    :param api_key: API Key for OCR.space
+    :param h5_filepath: Path to the HDF5 file containing the CAPTCHAs
+    :param num_images: Number of images to test
+    :param noise_factor: Noise factor to apply to the images
+    :param display_images: If True, displays the images using matplotlib
+    :return: List of results (index, predicted text, ground truth text)
     """
-    # Génération des CAPTCHA
+    # CAPTCHA generation
     x = mnist_loader.load_captcha_dataset(
         h5_filepath=h5_filepath, 
         num_images_train=num_images, 
@@ -112,35 +112,35 @@ def test_ocr_on_captcha(mnist_loader, api_key, h5_filepath, num_images=3, noise_
     
     results = []
     
-    # Test de l'API sur les images X_train
+    # Testing API on X_train images
     for i in range(len(X_train)):
         image_data = X_train[i]
         
-        # Conversion en uint8 si nécessaire
+        # Conversion to uint8 if necessary
         if image_data.max() <= 1.0:
             image_data = (image_data * 255).astype(np.uint8)
         else:
             image_data = image_data.astype(np.uint8)
         
-        # Création et traitement de l'image
+        # Image creation and processing
         img = Image.fromarray(image_data)
         
-        # Conversion en niveaux de gris si nécessaire
+        # Convert to grayscale if necessary
         if img.mode != 'L':
             img = img.convert('L')
         
-        # Inversion des couleurs de l'image
+        # Image color inversion
         img = ImageOps.invert(img)
         
-        # Amélioration de la netteté
+        # Sharpness enhancement
         img = img.filter(ImageFilter.SHARPEN)
         
-        # Sauvegarde temporaire
+        # Temporary file saving
         temp_filename = "test1.png"
         img.save(temp_filename)
         
-        # Prédiction via l'API
-        print(f"Prédiction de l'image {i}...")
+        # Prediction via API
+        print(f"Predicting image {i}...")
         test_file = ocr_space_file(
             filename=temp_filename, 
             api_key=api_key, 
@@ -149,13 +149,13 @@ def test_ocr_on_captcha(mnist_loader, api_key, h5_filepath, num_images=3, noise_
             OCREngine=2
         )
         
-        # Conversion du résultat en dictionnaire
+        # Parse result into dictionary
         data = json.loads(test_file)
         
-        # Accès au texte parsé
+        # Access parsed text
         parsed_text = data["ParsedResults"][0]["ParsedText"]
         
-        # Récupération du label réel
+        # Retrieving ground truth label
         true_label = ''.join(map(str, y_train[i]))
                 
         results.append({
@@ -165,15 +165,15 @@ def test_ocr_on_captcha(mnist_loader, api_key, h5_filepath, num_images=3, noise_
             'correct': parsed_text.strip() == true_label
         })
         
-        # Affichage de l'image
+        # Displaying image
         if display_images:
             plt.figure(figsize=(8, 4))
             plt.imshow(img, cmap='gray')
-            plt.title(f"Image {i}: Prédit = '{parsed_text}', Réel = '{true_label}'")
+            plt.title(f"Image {i}: Predicted = '{parsed_text}', Ground Truth = '{true_label}'")
             plt.axis('off')
             plt.show()
     
-    # Nettoyage du fichier temporaire
+    # Cleanup temporary file
     if os.path.exists(temp_filename):
         os.remove(temp_filename)
     
@@ -183,20 +183,20 @@ def test_ocr_on_captcha(mnist_loader, api_key, h5_filepath, num_images=3, noise_
 if __name__ == '__main__':
     from MNIST import MnistDataloader
     
-    # Chargement de la clé API
+    # Loading API key
     load_dotenv(dotenv_path="src/.env") 
     api_key = os.getenv("OCR_API_KEY")
     
     if api_key is None:
-        print("Erreur: Clé API non trouvée. Vérifiez votre fichier .env")
+        print("Error: API Key not found. Check your .env file")
     else:
-        # Initialisation du loader MNIST
+        # MNIST loader initialization
         mnist = MnistDataloader()
         
-        # Chemin vers le fichier CAPTCHA
+        # Path to CAPTCHA file
         h5_filepath = os.path.join('data', 'captcha_data', 'captcha_dataset.h5')
         
-        # Test de l'OCR sur les CAPTCHA
+        # Testing OCR on CAPTCHAs
         results = test_ocr_on_captcha(
             mnist_loader=mnist,
             api_key=api_key,
@@ -206,7 +206,6 @@ if __name__ == '__main__':
             display_images=True
         )
         
-        # Affichage du résumé
+        # Displaying summary
         for r in results:
-            print(f"Image {r['index']}: Prédit = '{r['predicted']}', Réel = '{r['true_label']}'")
-        
+            print(f"Image {r['index']}: Predicted = '{r['predicted']}', Ground Truth = '{r['true_label']}'")
