@@ -80,6 +80,7 @@ On va régresser sur les niveaux de bruit, sur les types de bruit, sur les coule
 Faire des stats sur les chiffres que le modèle confond le plus, sur les combinaisons que le modèle prédit le mieux, le moins bien. 
 
 Régresser les différentes variables. Table de régression, coefficients, p value, stat de test. Débiaiser les clusters dans les régressions (si il y a des groupes pour certaines features). Méthode du Leave one out, voir la corrélation entre les régresseurs, le R² ajusté. Séparer les effets, plot en ordonnée la variable à expliquer et en abscisse la variable explicative et mettre la droite. Corrélation à l'ordre 2 ? à l'ordre 3 ?
+
 Visualisation pour quels chiffres ils se trompent 
 Est-ce qu’il a plus de mal à prédire si tout le temps le même chiffre ou si pair différents 
 Regarder les masques 
