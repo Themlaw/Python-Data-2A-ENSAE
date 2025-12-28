@@ -18,4 +18,7 @@ dependencies = [
     "pandas>=2.3.3",
     "seaborn>=0.13.2",
     "dotenv>=0.9.9",
+    "ipywidgets>=8.1.8",
+    "jupyter>=1.1.1",
+    "tables>=3.10.2",
 ]

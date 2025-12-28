@@ -134,7 +134,8 @@ def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3,
 
 def train_and_evaluate(data_dir='data', model_save_path='data/models/multi_output_cnn.keras',
                       apply_noise=False, noise_type='gaussian', noise_factor=0.3, 
-                      noise_factor_end=None, noise_step=0.1, rgb_noise=False):
+                      noise_factor_end=None, noise_step=0.1, rgb_noise=False,
+                      num_train=100_000, num_test=20_000, num_epochs=5):
     """Trains and evaluates the CNN model.
 
     :param data_dir: The directory where the MNIST data is stored.
@@ -151,17 +152,17 @@ def train_and_evaluate(data_dir='data', model_save_path='data/models/multi_outpu
     mnist_loader = MnistDataloader(data_dir=data_dir)
     try:
         # Load dataset without noise first
-        (x_train, y_train), (x_test, y_test) = mnist_loader.load_captcha_dataset()
+        (x_train, y_train), (x_test, y_test) = mnist_loader.load_captcha_dataset(num_images_train=num_train, num_images_test=num_test)
     except Exception as e:
         print(f"Captcha dataset not found with error: {e}, creating a new one...")
         try:
-            mnist_loader.create_captcha_dataset(num_train=100_000, num_test=10_000)
-            (x_train, y_train), (x_test, y_test) = mnist_loader.load_captcha_dataset()
+            mnist_loader.create_captcha_dataset(num_train=num_train, num_test=num_test)
+            (x_train, y_train), (x_test, y_test) = mnist_loader.load_captcha_dataset(num_images_train=num_train, num_images_test=num_test)
         except Exception as e2:
             print(f"Failed to create captcha dataset with error: {e2}, downloading MNIST data...")
             mnist_loader.download_mnist()
-            mnist_loader.create_captcha_dataset(num_train=100_000, num_test=10_000)
-            (x_train, y_train), (x_test, y_test) = mnist_loader.load_captcha_dataset()
+            mnist_loader.create_captcha_dataset(num_train=num_train, num_test=num_test)
+            (x_train, y_train), (x_test, y_test) = mnist_loader.load_captcha_dataset(num_images_train=num_train, num_images_test=num_test)
     
     # Apply noise if requested (before converting to grayscale)
     if apply_noise:
@@ -187,7 +188,7 @@ def train_and_evaluate(data_dir='data', model_save_path='data/models/multi_outpu
 
     print("\nTraining model...")
     model.fit(x_train, [y_train[0], y_train[1], y_train[2], y_train[3]], 
-              epochs=5, batch_size=64, 
+              epochs=num_epochs, batch_size=64, 
               validation_data=(x_test, [y_test[0], y_test[1], y_test[2], y_test[3]]))
 
     print("\nEvaluating model...")

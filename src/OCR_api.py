@@ -78,7 +78,6 @@ def ocr_space_one_image(image_data, api_key, language='eng', filetype='PNG', OCR
         
     # Parse result into dictionary
     data = json.loads(test_file)
-    print(data)
     # Access parsed text
     parsed_text = data["ParsedResults"][0]["ParsedText"]
         
