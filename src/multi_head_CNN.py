@@ -77,7 +77,7 @@ def build_model():
     )
     return model
 
-def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3, noise_factor_end=None, step=0.1, rgb_noise=False, chunk_size=5000):
+def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3, noise_factor_end=None, step=0.1, rgb_noise=False, chunk_size=5000, apply_all_levels=False):
     """Applies noise with balanced distribution across different noise levels.
     
     :param images: Array of images to add noise to
@@ -87,9 +87,10 @@ def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3,
     :param step: Step size between noise levels
     :param rgb_noise: If True, applies noise independently per RGB channel
     :param chunk_size: Number of images to process at once to avoid memory issues
-    :returns: Array of noisy images
+    :param apply_all_levels: If True, applies ALL noise levels to ALL images (output shape: n_images * n_levels)
+                            If False, distributes images evenly across noise levels 
+    :returns: Array of noisy images. If apply_all_levels=True, also returns the noise_levels list as second element
     """
-    from MNIST import MnistDataloader
     temp_loader = MnistDataloader()
     
     if noise_factor_end is None:
@@ -107,15 +108,54 @@ def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3,
     if len(noise_levels) == 0:
         raise ValueError("No valid noise levels generated. Check your parameters.")
     
-    print(f"Applying {noise_type} noise with {len(noise_levels)} levels: {noise_levels} to {len(images)} images...")
+    num_images = len(images)
+    
+    # Apply all noise levels to all images
+    if apply_all_levels:
+        print(f"Applying {noise_type} noise: ALL {len(noise_levels)} levels to ALL {num_images} images...")
+        print(f"  Noise levels: {noise_levels}")
+        print(f"  Output will have {num_images * len(noise_levels)} images")
+        
+        # Convert to float32 if needed
+        if images.dtype == np.float64:
+            print(f"Converting from float64 to float32 to save memory...")
+            images = images.astype(np.float32)
+        
+        # Pre-allocate output array: (n_images * n_levels, H, W, C)
+        output_shape = (num_images * len(noise_levels),) + images.shape[1:]
+        noisy_images = np.empty(output_shape, dtype=images.dtype)
+        
+        # Process each noise level
+        for level_idx, level in enumerate(noise_levels):
+            start_idx = level_idx * num_images
+            end_idx = start_idx + num_images
+            print(f"  Level {level:.2f}: indices {start_idx}-{end_idx-1}")
+            
+            # Process in chunks
+            for chunk_start in range(0, num_images, chunk_size):
+                chunk_end = min(chunk_start + chunk_size, num_images)
+                out_start = start_idx + chunk_start
+                out_end = start_idx + chunk_end
+                
+                noisy_images[out_start:out_end] = temp_loader.add_noise(
+                    images=images[chunk_start:chunk_end],
+                    noise_type=noise_type,
+                    noise_factor=level,
+                    rgb_noise=rgb_noise
+                )
+        
+        print(f"Noise application completed: {len(noisy_images)} noisy images")
+        return noisy_images, noise_levels
     
     # Distribute images evenly across noise levels
-    num_images = len(images)
+    print(f"Applying {noise_type} noise with {len(noise_levels)} levels: {noise_levels} to {num_images} images...")
+    
+    # Distribute images evenly across noise levels
     images_per_level = num_images // len(noise_levels)
     remainder = num_images % len(noise_levels)
     
     # Pre-allocate output array with same dtype as input (avoids unnecessary memory usage)
-    # Convert to float32 if needed to save memory (float64 uses 2x memory)
+    # Convert to float32 if needed to save memory
     if images.dtype == np.float64:
         print(f"Converting from float64 to float32 to save memory...")
         images = images.astype(np.float32)
@@ -183,7 +223,7 @@ def train_and_evaluate(data_dir='data', model_save_path='data/models/multi_outpu
             mnist_loader.create_captcha_dataset(num_train=num_train, num_test=num_test)
             (x_train, y_train), (x_test, y_test) = mnist_loader.load_captcha_dataset(num_images_train=num_train, num_images_test=num_test)
     
-    # Apply noise if requested (before converting to grayscale)
+    # Apply noise if requested
     if apply_noise:
         noise_mode = "RGB" if rgb_noise else "grayscale"
         if noise_factor_end is None:
@@ -241,22 +281,22 @@ if __name__ == '__main__':
     # )
     
     # Example 4: Train with salt_and_pepper noise with range
-    # train_and_evaluate(
-    #     model_save_path='data/models/multi_output_cnn_sandp.keras',
-    #     apply_noise=True, 
-    #     noise_type='salt_and_pepper', 
-    #     noise_factor=0.2, 
-    #     noise_factor_end=0.4, 
-    #     noise_step=0.1,
-    #     rgb_noise=False
-    # )
-    #Test apply balanced salt_and_pepper noise from 0.2 to 0.4
-    test = apply_balanced_noise(
-        images=np.random.rand(100_000,100,110,1), 
+    train_and_evaluate(
+        model_save_path='data/models/multi_output_cnn_sandp.keras',
+        apply_noise=True, 
         noise_type='salt_and_pepper', 
         noise_factor=0.2, 
         noise_factor_end=0.4, 
-        step=0.1, 
-        rgb_noise=False,
-        chunk_size=3_000
+        noise_step=0.1,
+        rgb_noise=False
     )
+    #Test apply balanced salt_and_pepper noise from 0.2 to 0.4
+    # test = apply_balanced_noise(
+    #     images=np.random.rand(100_000,100,110,1), 
+    #     noise_type='salt_and_pepper', 
+    #     noise_factor=0.2, 
+    #     noise_factor_end=0.4, 
+    #     step=0.1, 
+    #     rgb_noise=False,
+    #     chunk_size=3_000
+    # )

@@ -48,6 +48,10 @@ def ocr_space_one_image(image_data, api_key, language='eng', filetype='PNG', OCR
         image_data = (image_data * 255).astype(np.uint8)
     else:
         image_data = image_data.astype(np.uint8)  
+    
+    # Remove singleton channel dimension if present (e.g., shape (H, W, 1) -> (H, W))
+    if image_data.ndim == 3 and image_data.shape[-1] == 1:
+        image_data = image_data.squeeze(axis=-1)
         
     # Image creation and processing
     img = Image.fromarray(image_data)
