@@ -82,10 +82,13 @@ def ocr_space_one_image(image_data, api_key, language='eng', filetype='PNG', OCR
         
     # Parse result into dictionary
     data = json.loads(test_file)
-    # Access parsed text
-    parsed_text = data["ParsedResults"][0]["ParsedText"]
-        
-    return parsed_text
+    # Access parsed 
+    try:
+        parsed_text = data["ParsedResults"][0]["ParsedText"]
+        return parsed_text
+    except:
+        print(f"Error: {data}")
+        return np.nan        
  
 def test_ocr_on_captcha(mnist_loader, api_key, h5_filepath, num_images=3, noise_factor=0.1, display_images=True):
     """
