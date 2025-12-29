@@ -63,18 +63,21 @@ class MnistDataloader(object):
         :returns: noisy images in same format as input
         """
         # Convert to numpy array if it's a list
-        images_array = np.array(images)
+        images_array = np.asarray(images) 
         
         # Detect if images are normalized (0-1) or raw (0-255)
         is_normalized = images_array.max() <= 1.1
         
         # Work with normalized values (0-1)
         if not is_normalized:
-            images_work = images_array.astype('float32') / 255.0
+            # Allocate output directly to avoid intermediate copy
+            noisy_images = images_array.astype('float32') / 255.0
         else:
-            images_work = images_array.astype('float32')
-        
-        noisy_images = images_work.copy()
+            # Only convert dtype if necessary
+            if images_array.dtype != np.float32:
+                noisy_images = images_array.astype('float32')
+            else:
+                noisy_images = images_array.copy()
         
         # Check if images are RGB (have 3 channels)
         is_rgb = len(noisy_images.shape) == 4 and noisy_images.shape[-1] == 3
@@ -82,34 +85,38 @@ class MnistDataloader(object):
         if noise_type == "gaussian":
             if is_rgb and not rgb_noise:
                 # Grayscale noise for RGB: apply same noise to all channels
-                # Create mask and noise for one channel
-                mask = np.random.random(noisy_images.shape[:-1] + (1,)) < noise_factor
-                noise = np.random.normal(loc=0.0, scale=1.0, size=mask.shape)
-                # Broadcast to all channels
-                mask = np.broadcast_to(mask, noisy_images.shape)
-                noise = np.broadcast_to(noise, noisy_images.shape)
-                noisy_images[mask] += noise[mask]
+                # Generate mask and noise for one channel only
+                mask_shape = noisy_images.shape[:-1] + (1,)
+                mask = np.random.random(mask_shape) < noise_factor
+                noise = np.random.normal(0.0, 1.0, mask_shape).astype('float32')
+                
+                # Apply noise only where mask is True, broadcast across RGB channels
+                noisy_images = np.where(mask, noisy_images + noise, noisy_images)
+                noisy_images = np.clip(noisy_images, 0., 1., out=noisy_images)
             else:
                 # RGB noise or grayscale images: apply noise independently
                 mask = np.random.random(noisy_images.shape) < noise_factor
-                noisy_images[mask] += np.random.normal(loc=0.0, scale=1.0, size=np.sum(mask))
-            
-            # Clip to valid range
-            noisy_images = np.clip(noisy_images, 0., 1.)
+                noise = np.random.normal(0.0, 1.0, noisy_images.shape).astype('float32')
+                
+                # Apply noise only where mask is True
+                noisy_images[mask] += noise[mask]
+                np.clip(noisy_images, 0., 1., out=noisy_images)
             
         elif noise_type == "salt_and_pepper":
             if is_rgb and not rgb_noise:
                 # Grayscale salt & pepper for RGB: apply same value to all channels
-                mask = np.random.random(noisy_images.shape[:-1] + (1,)) < noise_factor
-                salt_pepper = np.random.choice([0.0, 1.0], size=mask.shape)
-                # Broadcast to all channels
-                mask = np.broadcast_to(mask, noisy_images.shape)
-                salt_pepper = np.broadcast_to(salt_pepper, noisy_images.shape)
-                noisy_images[mask] = salt_pepper[mask]
+                mask_shape = noisy_images.shape[:-1] + (1,)
+                mask = np.random.random(mask_shape) < noise_factor
+                salt_pepper = np.random.choice([0.0, 1.0], size=mask_shape).astype('float32')
+                
+                noisy_images = np.where(mask, salt_pepper, noisy_images)
             else:
                 # RGB noise or grayscale images: apply noise independently
                 mask = np.random.random(noisy_images.shape) < noise_factor
-                noisy_images[mask] = np.random.choice([0.0, 1.0], size=np.sum(mask))
+                salt_pepper = np.random.choice([0.0, 1.0], size=noisy_images.shape).astype('float32')
+                
+                # Direct assignment where mask is True
+                noisy_images[mask] = salt_pepper[mask]
         
         # Return in same format as input
         if not is_normalized:

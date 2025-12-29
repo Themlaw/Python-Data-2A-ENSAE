@@ -5,6 +5,8 @@ from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Conv2D, Flatten, Dense, Input, MaxPooling2D
 from tensorflow.keras.utils import to_categorical
 from MNIST import MnistDataloader
+import matplotlib.pyplot as plt
+
 
 def preprocess_data(x_train, y_train, x_test, y_test):
     """Preprocesses the test data by normalizing and one-hot encoding the labels.
@@ -75,7 +77,7 @@ def build_model():
     )
     return model
 
-def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3, noise_factor_end=None, step=0.1, rgb_noise=False):
+def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3, noise_factor_end=None, step=0.1, rgb_noise=False, chunk_size=5000):
     """Applies noise with balanced distribution across different noise levels.
     
     :param images: Array of images to add noise to
@@ -84,6 +86,7 @@ def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3,
     :param noise_factor_end: Ending noise factor (if None, all images use noise_factor)
     :param step: Step size between noise levels
     :param rgb_noise: If True, applies noise independently per RGB channel
+    :param chunk_size: Number of images to process at once to avoid memory issues
     :returns: Array of noisy images
     """
     from MNIST import MnistDataloader
@@ -91,7 +94,7 @@ def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3,
     
     if noise_factor_end is None:
         # Apply same noise to all images
-        print(f"Applying {noise_type} noise (factor: {noise_factor})...")
+        print(f"Applying {noise_type} noise (factor: {noise_factor}) to {len(images)} images...")
         return temp_loader.add_noise(images, noise_type, noise_factor, rgb_noise)
     
     # Calculate noise levels
@@ -104,33 +107,49 @@ def apply_balanced_noise(images, noise_type='salt_and_pepper', noise_factor=0.3,
     if len(noise_levels) == 0:
         raise ValueError("No valid noise levels generated. Check your parameters.")
     
-    print(f"Applying {noise_type} noise with {len(noise_levels)} levels: {noise_levels}")
+    print(f"Applying {noise_type} noise with {len(noise_levels)} levels: {noise_levels} to {len(images)} images...")
     
     # Distribute images evenly across noise levels
     num_images = len(images)
     images_per_level = num_images // len(noise_levels)
     remainder = num_images % len(noise_levels)
     
-    noisy_images = []
+    # Pre-allocate output array with same dtype as input (avoids unnecessary memory usage)
+    # Convert to float32 if needed to save memory (float64 uses 2x memory)
+    if images.dtype == np.float64:
+        print(f"Converting from float64 to float32 to save memory...")
+        images = images.astype(np.float32)
+    
+    print(f"Allocating output array ({images.dtype})...")
+    noisy_images = np.empty_like(images)
+    
     current_idx = 0
     
+    # Process all levels
     for i, level in enumerate(noise_levels):
         # Calculate how many images for this level (distribute remainder)
         num_for_level = images_per_level + (1 if i < remainder else 0)
         
         if num_for_level > 0:
-            # Extract images for this noise level
-            batch = images[current_idx:current_idx + num_for_level]
+            end_idx = current_idx + num_for_level
+            print(f"  Level {level:.2f}: processing {num_for_level} images ({current_idx+1}-{end_idx})")
             
-            # Apply noise
-            print(f"  Level {level:.2f}: processing {num_for_level} images ({current_idx+1}-{current_idx+num_for_level})")
-            batch_noisy = temp_loader.add_noise(images=batch, noise_type=noise_type, noise_factor=level, rgb_noise=rgb_noise)
-            noisy_images.append(batch_noisy)
+            # Process this level in smaller chunks to avoid creating large temporary arrays
+            for chunk_start in range(current_idx, end_idx, chunk_size):
+                chunk_end = min(chunk_start + chunk_size, end_idx)
+                
+                # Apply noise to this chunk and write directly to output array
+                noisy_images[chunk_start:chunk_end] = temp_loader.add_noise(
+                    images=images[chunk_start:chunk_end], 
+                    noise_type=noise_type, 
+                    noise_factor=level, 
+                    rgb_noise=rgb_noise
+                )
             
-            current_idx += num_for_level
+            current_idx = end_idx
     
-    # Concatenate all batches
-    return np.concatenate(noisy_images, axis=0)
+    print(f"Noise application completed for {num_images} images")
+    return noisy_images
 
 def train_and_evaluate(data_dir='data', model_save_path='data/models/multi_output_cnn.keras',
                       apply_noise=False, noise_type='gaussian', noise_factor=0.3, 
@@ -222,12 +241,22 @@ if __name__ == '__main__':
     # )
     
     # Example 4: Train with salt_and_pepper noise with range
-    train_and_evaluate(
-        model_save_path='data/models/multi_output_cnn_sandp.keras',
-        apply_noise=True, 
+    # train_and_evaluate(
+    #     model_save_path='data/models/multi_output_cnn_sandp.keras',
+    #     apply_noise=True, 
+    #     noise_type='salt_and_pepper', 
+    #     noise_factor=0.2, 
+    #     noise_factor_end=0.4, 
+    #     noise_step=0.1,
+    #     rgb_noise=False
+    # )
+    #Test apply balanced salt_and_pepper noise from 0.2 to 0.4
+    test = apply_balanced_noise(
+        images=np.random.rand(100_000,100,110,1), 
         noise_type='salt_and_pepper', 
         noise_factor=0.2, 
         noise_factor_end=0.4, 
-        noise_step=0.1,
-        rgb_noise=False
+        step=0.1, 
+        rgb_noise=False,
+        chunk_size=3_000
     )
