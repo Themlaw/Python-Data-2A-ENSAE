@@ -1,16 +1,24 @@
 # Python-Data-2A-ENSAE
 
+**Authors:** Yann Gautier, Noé Idesheim, Titouan Constance
+
 This is the GitHub repository for the Python project for Data Science in the second year at ENSAE.
 
-This project explores different methods of image classification and denoising in some specific training datasets.
+This project studies the robustness of CAPTCHA recognition models against various types of noise. CAPTCHAs are a standard for web security, but their effectiveness can be compromised by image degradation.
 
-First objective : Explore and build a classifier method limited to MNIST data
+**The central question of this project is as follows:**
+> *How does image alteration via the injection of different noise types impact the resolution of CAPTCHAs by recognition models?*
 
-Final objective : Build a method to solve any Captcha
+We focus on:
 
-The final model should :
+1. The generation of a **synthetic CAPTCHA dataset** (based on MNIST).
+2. The training of a **Multi-Head CNN** capable of recognizing 4 digits simultaneously.
+3. The evaluation of **robustness** against two noise types (Gaussian, Salt & Pepper).
+4. Comparison with a general-purpose **OCR API**.
+5. Statistical analysis, including logistic regression on model performance.
+6. Identification of the most challenging CAPTCHAs for security optimization.
 
-- predict the values of any Captcha characters
+The final model predicts the values of 4-digit CAPTCHAs under noise conditions.
 
 ## Installation
 
@@ -44,9 +52,11 @@ The final model should :
 
 ## Code
 
-- [MNIST.py](src/MNIST.py) : the class enabling us to load the MNIST data and make transforms on it, we also generate our database here
-- [simple_CNN.py](src/simple_CNN.py) : the first model we use to predict the value of MNIST
-- [evaluate_model.py](src/evaluate_model.py) : some functions used for making stats about the models
+- [MNIST.py](src/MNIST.py) : the class enabling us to load the MNIST data, apply noise, and generate our CAPTCHA database
+- [simple_CNN.py](src/simple_CNN.py) : a simple CNN model for MNIST digit recognition
+- [multi_head_CNN.py](src/multi_head_CNN.py) : the multi-head CNN model for recognizing 4-digit CAPTCHAs simultaneously
+- [OCR_api.py](src/OCR_api.py) : functions for interacting with the OCR.space API for baseline comparison
+- [evaluate_model.py](src/evaluate_model.py) : functions for evaluating model performance, robustness against noise, and statistical analysis
 
 ### Using the pipeline
 
@@ -54,39 +64,6 @@ The final model should :
 
 ## Used Data
 
-Using a MNIST database, we generate a complete captcha database with images of 4 characters. Each image can have a varying level of noise on it.
+Using a MNIST database, we generate a synthetic CAPTCHA dataset consisting of 4-digit sequences assembled from MNIST images, resized to 100x110 pixels. Noise (Gaussian or Salt & Pepper) can be dynamically applied at various intensities during training and evaluation.
 
 [MNIST.py](src/MNIST.py)
-
-## Questions / brouillon
-
-Denoise the data ? Optional, just see if the noise alters the quality of predictions
-Generate the data ? Yes and it is equivalent to cleaning.
-The website and scrapping ? No
-Cleaning up the data ? Not necessary if data are generated
-Getting the data from huggingface or from alternatives to kaggle ? Just for subdatasets, don't try it for the main dataset
-Using the pipeline : is a bash command displayed in the readme ok ? + there are examples of usage ? No just make a main jupyter notebook with main + commented results.
-
-Generate the data with different noise levels and make stats on the success rate according to the noise level. -> no
-
-Décomposition en valeurs propres, couleurs, saturation. C'est rare de dénoiser puis de classifier, mais pas impossible. Classifier VAE, visualiser les espaces latents. Chaque région de l'espace correspond à une classe. Voir ça avec données sans noise, puis introduction du bruit et voir si le classifier est résistant, voir pourquoi l'accuracy baisse (classes plus segmentées ou plus vastes) Quelle classe est la plus robuste au noise ?
-
------------------------------------------------------------
-
-Comment la modification d'une image par ajout de différents types de bruits influence la résolution des captcha par des modèles de reconnaissance. Pour cela, nous utilisons un modèle de CNN qui sert de base à nos expériences. 
-
-On va régresser sur les niveaux de bruit, sur les types de bruit, sur les couleurs / noir et blanc...
-
-Faire des stats sur les chiffres que le modèle confond le plus, sur les combinaisons que le modèle prédit le mieux, le moins bien. 
-
-Régresser les différentes variables. Table de régression, coefficients, p value, stat de test. Débiaiser les clusters dans les régressions (si il y a des groupes pour certaines features). Méthode du Leave one out, voir la corrélation entre les régresseurs, le R² ajusté. Séparer les effets, plot en ordonnée la variable à expliquer et en abscisse la variable explicative et mettre la droite. Corrélation à l'ordre 2 ? à l'ordre 3 ?
-
-Visualisation pour quels chiffres ils se trompent 
-Est-ce qu’il a plus de mal à prédire si tout le temps le même chiffre ou si pair différents 
-Regarder les masques 
-Quel est le captcha optimal 
-
-
-<!-- silency maps : regarder ce que le modèle a appris. regarder ce que le modèle cherche dans l'image : qu'est-ce qui fait que le modèle reconnaît l'image. 
-
-Réfléchir au captcha optimal.  -->
