@@ -47,6 +47,10 @@ The final model predicts the values of 4-digit CAPTCHAs under noise conditions.
         ```shell
         source .venv/bin/activate
         ```
+4.  Get an API key:
+  We use an API key to make requests to the https://ocr.space/ OCR API.
+  To obtain your key, go to https://ocr.space/ocrapi/freekey and register. You will receive your API key by email.
+  Then, add it to the file 'src/.env' as follows: 'OCR_API_KEY="your_api_key"'
 
 
 
