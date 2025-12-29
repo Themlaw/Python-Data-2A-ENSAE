@@ -21,4 +21,6 @@ dependencies = [
     "ipywidgets>=8.1.8",
     "jupyter>=1.1.1",
     "tables>=3.10.2",
+    "statsmodels>=0.14.6",
+    "scikit-learn>=1.8.0",
 ]
